@@ -42,7 +42,26 @@ export async function chat(
     const body = await res.text().catch(() => "");
     throw new AgentError(JsonRpcCodes.InternalError, `Model HTTP ${res.status}: ${body.slice(0, 300)}`);
   }
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  // Some gateways stream by default (text/event-stream) even without stream:true.
+  const contentType = res.headers.get("content-type") ?? "";
+  const raw = await res.text();
+  if (contentType.includes("text/event-stream") || /^\s*data:/.test(raw)) {
+    let out = "";
+    for (const line of raw.split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t.startsWith("data:")) continue;
+      const payload = t.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+      try {
+        const j = JSON.parse(payload) as { choices?: { delta?: { content?: string }; message?: { content?: string } }[] };
+        out += j.choices?.[0]?.delta?.content ?? j.choices?.[0]?.message?.content ?? "";
+      } catch {
+        // ignore keep-alive lines
+      }
+    }
+    return out;
+  }
+  const data = JSON.parse(raw) as { choices?: { message?: { content?: string } }[] };
   return data.choices?.[0]?.message?.content ?? "";
 }
 
