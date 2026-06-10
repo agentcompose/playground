@@ -26,6 +26,9 @@ The worker agents are thin adapters at the right altitude:
 
 ## Run
 
+> **Requires Node ≥ 22.18** (the backend runs TypeScript via Node's native
+> type-stripping, same as the engine/SDK). With nvm: `nvm use` (an `.nvmrc` pins 24).
+
 ```bash
 # 1. install (root links @agentcompose/engine + sdk via file:)
 npm install

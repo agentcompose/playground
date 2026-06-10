@@ -11,12 +11,15 @@
     "dev:web": "npm --prefix web run dev",
     "typecheck": "tsc --noEmit"
   },
+  "engines": {
+    "node": ">=22.18"
+  },
   "dependencies": {
     "@agentcompose/engine": "file:../engine",
     "@agentcompose/sdk": "file:../sdk-typescript"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
   }
 }
