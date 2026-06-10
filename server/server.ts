@@ -24,6 +24,7 @@ import { openAICompatibleDecider } from "@agentcompose/engine/adapters/openai";
 import type { EngineEvent } from "@agentcompose/engine";
 
 import { fetchAgent, makeWriter } from "./agents.ts";
+import { makeResearchAgent, tavily } from "@agentcompose/research-agent";
 
 const PORT = Number(process.env.PORT ?? 5173);
 const baseUrl = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
@@ -38,9 +39,20 @@ if (!apiKey) {
 // One registry of real agents; one decider (the brain); a shared checkpoint store
 // so the governed engine can resume a suspended run. Two engines differ only by
 // governor so the UI can toggle HITL on/off.
+//
+// `research` is a dedicated, independently-published worker (@agentcompose/research-agent)
+// — a leaf the master delegates to. It uses Tavily when TAVILY_API_KEY is set, otherwise
+// an offline fixture, so it runs keyless. Modest defaults keep the demo snappy.
+const tavilyKey = process.env.TAVILY_API_KEY;
 const registry = new AgentRegistry({
   fetch: inProcess(fetchAgent),
   writer: inProcess(makeWriter({ baseUrl, model })),
+  research: inProcess(
+    makeResearchAgent({
+      defaults: { baseUrl, model, angles: 3, maxSourcesPerAngle: 4, maxIterationsPerAngle: 1 },
+      ...(tavilyKey ? { search: tavily({ apiKey: tavilyKey }) } : {}),
+    }),
+  ),
 });
 const decider = openAICompatibleDecider({ baseUrl, apiKey, model });
 const planner = dynamicPlanner({ decider, registry, maxRounds: 8 });
@@ -182,4 +194,5 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`▶ AgentCompose Playground on http://localhost:${PORT}`);
   console.log(`  model: ${model}  ·  base: ${baseUrl}`);
+  console.log(`  search: ${tavilyKey ? "tavily (live web)" : "fixture (offline — set TAVILY_API_KEY for live web)"}`);
 });
