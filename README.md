@@ -36,9 +36,16 @@ npm install
 # 2. build the web app once
 npm run build
 
-# 3. start the server (serves the built app + the API)
-OPENAI_API_KEY=sk-... npm start          # open http://localhost:5173
+# 3. configure your key — either a .env file (recommended) or an inline env var
+cp .env.example .env        # then edit .env and set OPENAI_API_KEY
+npm start                   # loads .env automatically → http://localhost:5173
+
+# ...or without a .env file:
+OPENAI_API_KEY=sk-... npm start
 ```
+
+`.env` is loaded natively by Node (`--env-file`), no `dotenv` dependency. It's
+git-ignored. Supported keys are the same as the env vars below.
 
 **Developing the UI** (hot reload) — two terminals:
 

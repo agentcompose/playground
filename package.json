@@ -6,7 +6,7 @@
   "license": "Apache-2.0",
   "private": true,
   "scripts": {
-    "start": "node server/server.ts",
+    "start": "node --env-file-if-exists=.env server/server.ts",
     "build": "npm --prefix web install && npm --prefix web run build",
     "dev:web": "npm --prefix web run dev",
     "typecheck": "tsc --noEmit"
