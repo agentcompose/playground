@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { sendControl, startRun } from "../api.ts";
 import {
   type EngineEvent,
+  type Part,
   type RunStatus,
   type StepState,
   type StepView,
@@ -11,7 +12,7 @@ import {
 interface RunState {
   status: RunStatus;
   steps: StepView[];
-  result?: string;
+  resultParts?: Part[];
   error?: string;
   pending?: { stepId: string; agent: string };
   log: EngineEvent[];
@@ -23,7 +24,7 @@ interface RunState {
 export function useRun(): RunState {
   const [status, setStatus] = useState<RunStatus>("idle");
   const [steps, setSteps] = useState<StepView[]>([]);
-  const [result, setResult] = useState<string>();
+  const [resultParts, setResultParts] = useState<Part[]>();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState<{ stepId: string; agent: string }>();
   const [log, setLog] = useState<EngineEvent[]>([]);
@@ -93,7 +94,7 @@ export function useRun(): RunState {
           break;
         }
         case "result":
-          setResult(partsToText(ev.parts));
+          setResultParts(ev.parts);
           setStatus("completed");
           closeStream();
           break;
@@ -125,7 +126,7 @@ export function useRun(): RunState {
     closeStream();
     stepsRef.current = new Map();
     setSteps([]);
-    setResult(undefined);
+    setResultParts(undefined);
     setError(undefined);
     setPending(undefined);
     setLog([]);
@@ -154,5 +155,5 @@ export function useRun(): RunState {
     [pending],
   );
 
-  return { status, steps, result, error, pending, log, run, approve, reset };
+  return { status, steps, resultParts, error, pending, log, run, approve, reset };
 }
