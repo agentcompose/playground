@@ -1,7 +1,8 @@
 # AgentCompose Playground
 
-A **zero-dependency web playground** for driving the [AgentCompose engine](https://github.com/agentcompose/engine)
-with a **real model** and **real agents**. It is two things at once:
+A **web playground** for driving the [AgentCompose engine](https://github.com/agentcompose/engine)
+with a **real model** and **real agents** — a polished **React** front end over a
+**zero-dependency Node backend**. It is two things at once:
 
 1. **The long-life testing harness** — type goals, watch the engine plan → delegate →
    stream, approve/deny governed steps (HITL), and judge whether the orchestration is
@@ -9,6 +10,11 @@ with a **real model** and **real agents**. It is two things at once:
 2. **The seed of product layer ④** — the first concrete UI on top of the headless
    engine, and the first external consumer that exercises `@agentcompose/engine`'s
    public package surface.
+
+> **On dependencies:** the *engine core* stays dependency-free by design. This is the
+> *product* layer, so it uses a real stack — **Vite + React + TypeScript + Tailwind**
+> for the UI — while the backend that wires the engine stays **zero-dependency**
+> (Node's built-in `http` + Server-Sent Events, no framework).
 
 It runs **real work**, not canned strings — the only honest way to evaluate the engine.
 The worker agents are thin adapters at the right altitude:
@@ -19,9 +25,6 @@ The worker agents are thin adapters at the right altitude:
 | `writer` | your LLM via **provider injection** (BYO-model) | proves the spec's model injection on the worker side |
 
 ## Run
-
-The app is a **Vite + React + TypeScript + Tailwind** front end over a **zero-dependency
-Node SSE backend** that wires the engine.
 
 ```bash
 # 1. install (root links @agentcompose/engine + sdk via file:)
