@@ -30,7 +30,7 @@ The worker agents are thin adapters at the right altitude:
 > type-stripping, same as the engine/SDK). With nvm: `nvm use` (an `.nvmrc` pins 24).
 
 ```bash
-# 1. install (root links @agentcompose/engine + sdk via file:)
+# 1. install (@agentcompose/engine + sdk from npm)
 npm install
 
 # 2. build the web app once
@@ -109,8 +109,6 @@ playground/
   engine's persistence adapter (a separate, tracked engine item).
 - **One governance policy** (approve `fetch`). The governor seam supports arbitrary
   policies; the UI just exposes a single toggle for now.
-- **`file:` dependencies** on the engine/SDK until they publish to npm; this flips to
-  versioned `@agentcompose/engine@^0.1.0` at release.
 
 ## License
 

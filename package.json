@@ -15,8 +15,8 @@
     "node": ">=22.18"
   },
   "dependencies": {
-    "@agentcompose/engine": "file:../engine",
-    "@agentcompose/sdk": "file:../sdk-typescript"
+    "@agentcompose/engine": "^0.1.0",
+    "@agentcompose/sdk": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
