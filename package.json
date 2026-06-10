@@ -1,0 +1,22 @@
+{
+  "name": "@agentcompose/playground",
+  "version": "0.1.0",
+  "description": "A zero-dependency web playground for driving the AgentCompose engine with a real model and real agents — the long-life testing harness and the seed of the product layer.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "start": "node server/server.ts",
+    "build": "npm --prefix web install && npm --prefix web run build",
+    "dev:web": "npm --prefix web run dev",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agentcompose/engine": "file:../engine",
+    "@agentcompose/sdk": "file:../sdk-typescript"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}
