@@ -28,6 +28,8 @@ export type EngineEvent =
   | { type: "message"; stepId: string; delta: Part }
   | { type: "artifact"; stepId: string; artifact: Artifact }
   | { type: "step-completed"; stepId: string; parts: Part[] }
+  | { type: "step-retry"; stepId: string; agent: string; attempt: number; maxAttempts: number; delayMs: number; error: RpcError }
+  | { type: "step-fallback"; stepId: string; from: string; to: string }
   | { type: "step-failed"; stepId: string; error: RpcError }
   | { type: "suspended"; reason: Pending }
   | { type: "canceled" }

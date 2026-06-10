@@ -74,6 +74,15 @@ export function useRun(): RunState {
         case "step-completed":
           upsert(ev.stepId, { state: "done", output: partsToText(ev.parts) });
           break;
+        case "step-retry":
+          upsert(ev.stepId, {
+            state: "running",
+            progress: `retry ${ev.attempt}/${ev.maxAttempts} in ${ev.delayMs}ms — ${ev.error.message}`,
+          });
+          break;
+        case "step-fallback":
+          upsert(ev.stepId, { agent: ev.to, state: "running", progress: `fallback: ${ev.from} → ${ev.to}` });
+          break;
         case "step-failed":
           upsert(ev.stepId, { state: "failed", error: ev.error.message });
           break;
