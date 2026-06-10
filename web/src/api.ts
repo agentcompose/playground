@@ -1,6 +1,15 @@
+export interface AgentInfo {
+  name: string;
+  title: string;
+  description?: string;
+  capabilities: string[];
+}
+
 export interface ServerConfig {
   model: string;
   baseUrl: string;
+  search?: string;
+  agents?: AgentInfo[];
 }
 
 export async function getConfig(): Promise<ServerConfig> {

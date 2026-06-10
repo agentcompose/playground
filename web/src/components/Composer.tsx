@@ -13,6 +13,14 @@ const SAMPLES: { label: string; goal: string }[] = [
     label: "Key engine concepts",
     goal: "Fetch https://raw.githubusercontent.com/agentcompose/engine/main/README.md and list the 3 most important concepts with one line each.",
   },
+  {
+    label: "🔬 Research: Raft vs Paxos",
+    goal: "Research the trade-offs between Raft and Paxos for consensus in a write-heavy service, and produce a cited report.",
+  },
+  {
+    label: "🔬 Research: consensus & latency",
+    goal: "Research how consensus algorithms trade off latency, throughput, and availability. Cite your sources.",
+  },
 ];
 
 export function Composer({

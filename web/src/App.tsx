@@ -5,6 +5,7 @@ import { Composer } from "./components/Composer.tsx";
 import { StepTimeline } from "./components/StepTimeline.tsx";
 import { ApprovalCard } from "./components/ApprovalCard.tsx";
 import { ResultPanel } from "./components/ResultPanel.tsx";
+import { AgentRoster } from "./components/AgentRoster.tsx";
 import { EventLog } from "./components/EventLog.tsx";
 import { StatusBadge } from "./components/StatusBadge.tsx";
 
@@ -32,6 +33,8 @@ export function App() {
 
       <Composer busy={busy} onRun={run.run} />
 
+      {cfg?.agents && <AgentRoster agents={cfg.agents} search={cfg.search} />}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-line bg-panel/40">
           <h2 className="border-b border-line px-4 py-2.5 text-xs uppercase tracking-wide text-dim">Plan &amp; steps</h2>
@@ -54,8 +57,10 @@ export function App() {
       <EventLog log={run.log} />
 
       <footer className="mt-auto pt-4 text-xs text-dim">
-        Real planner (your model) orchestrating real <span className="font-mono">fetch</span> +{" "}
-        <span className="font-mono">writer</span> agents. Durability is in-memory — resume works within this process.
+        Real planner (your model) orchestrating real <span className="font-mono">fetch</span>,{" "}
+        <span className="font-mono">writer</span>, and <span className="font-mono">research</span> agents — the
+        last is the standalone <span className="font-mono">@agentcompose/research-agent</span> worker. Durability is
+        in-memory — resume works within this process.
       </footer>
     </div>
   );

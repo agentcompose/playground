@@ -90,6 +90,7 @@ export const fetchAgent: AgentDefinition = defineAgent({
     id: "ac.fetch",
     name: "Fetch",
     version: "0.1.0",
+    description: "Fetches a URL and returns its readable text content.",
     capabilities: [{ id: "fetch", description: "Fetch a URL and return its readable text content" }],
     configSchema: {
       type: "object",
@@ -124,6 +125,7 @@ export function makeWriter(defaults: { baseUrl: string; model: string }): AgentD
       id: "ac.writer",
       name: "Writer",
       version: "0.1.0",
+      description: "Summarizes or composes text with an LLM (BYO-model).",
       capabilities: [{ id: "write", description: "Summarize or compose text with an LLM" }],
       configSchema: {
         type: "object",

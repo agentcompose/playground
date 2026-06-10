@@ -64,6 +64,23 @@ const engines = {
   governed: new Engine({ registry, planner, governor: approveWhen((s) => s.agent === "fetch"), checkpoints }),
 };
 
+// ── Agent roster (for the UI to show what the master can delegate to) ─────────
+async function roster(): Promise<
+  { name: string; title: string; description?: string; capabilities: string[] }[]
+> {
+  return Promise.all(
+    registry.names().map(async (name) => {
+      const d = await registry.describe(name);
+      return {
+        name,
+        title: d.name,
+        description: d.description,
+        capabilities: (d.capabilities ?? []).map((c) => c.id),
+      };
+    }),
+  );
+}
+
 // ── Per-run SSE plumbing ─────────────────────────────────────────────────────
 const pending = new Map<string, { goal: string; govern: boolean }>();
 const conns = new Map<string, http.ServerResponse>();
@@ -151,7 +168,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
 
   if (req.method === "GET" && url.pathname === "/config") {
-    return json(res, { model, baseUrl });
+    return json(res, { model, baseUrl, search: tavilyKey ? "tavily" : "fixture", agents: await roster() });
   }
 
   if (req.method === "POST" && url.pathname === "/run") {
