@@ -70,6 +70,21 @@ export function EventLog({ log }: { log: LogEntry[] }) {
   );
   const noiseCount = log.length - log.filter((e) => !meta(e.ev.type).noisy).length;
 
+  const rawText = useMemo(
+    () => shown.map((e, i) => `${i.toString().padStart(2, "0")}  ${JSON.stringify(e.ev)}`).join("\n"),
+    [shown],
+  );
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(rawText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      /* clipboard unavailable (e.g. non-secure context) */
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3">
@@ -89,6 +104,13 @@ export function EventLog({ log }: { log: LogEntry[] }) {
               <input type="checkbox" checked={raw} onChange={(e) => setRaw(e.target.checked)} />
               raw JSON
             </label>
+            <button
+              onClick={copy}
+              title="Copy the shown events as JSON lines"
+              className="rounded border border-line px-1.5 py-0.5 text-[11px] hover:text-white"
+            >
+              {copied ? "✓ copied" : "⧉ copy"}
+            </button>
           </div>
         )}
       </div>
@@ -96,7 +118,7 @@ export function EventLog({ log }: { log: LogEntry[] }) {
       {open &&
         (raw ? (
           <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-bg p-3 font-mono text-xs text-dim">
-            {shown.map((e, i) => `${i.toString().padStart(2, "0")}  ${JSON.stringify(e.ev)}`).join("\n")}
+            {rawText}
           </pre>
         ) : (
           <div className="mt-2 max-h-72 overflow-auto rounded-lg border border-line bg-bg p-2 font-mono text-[12.5px]">

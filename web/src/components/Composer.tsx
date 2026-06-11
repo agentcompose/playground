@@ -12,25 +12,42 @@ interface Sample {
 }
 
 const SAMPLES: Sample[] = [
+  // Coordinated (multi-agent) — what engine mode is for: the master plans across the
+  // roster and chains specialists. These should fan out into multiple steps.
   {
-    label: "Summarize the spec README",
-    goal: "Fetch https://raw.githubusercontent.com/agentcompose/spec/main/README.md, then write a crisp executive summary: a one-sentence thesis, exactly 5 bullets covering the contract's two surfaces and how composition works, and a closing line on who should care and why.",
+    label: "📱 App idea → rank → MVP",
+    goal:
+      "I want to build and publish a small app to the app stores and earn revenue from it. " +
+      "First research a few promising niches and the existing competition (demand, weaknesses, monetization, discoverability). " +
+      "Then rank the candidate ideas on market demand, monetization potential, and solo-developer build effort, and confirm the winner with me before building. " +
+      "Finally, build a minimal runnable prototype of the core feature of the idea I pick, with a quick test proving it works.",
+    note: "Coordinated · research → analysis → [your pick] → coding — the full app-making loop.",
   },
   {
-    label: "Describe example.com",
-    goal: "Fetch https://example.com and explain, in two sentences, what this page is and why it exists — written for a non-technical reader.",
+    label: "🔗 Survey → rank a choice",
+    goal:
+      "Research the leading options for a primary datastore for a write-heavy, multi-tenant SaaS backend, then score them against write throughput, operational complexity, cost, and ecosystem maturity and recommend one with its trade-offs.",
+    note: "Coordinated · research → analysis (gather, then decide).",
   },
   {
-    label: "Engine concepts → brief",
-    goal: "Fetch https://raw.githubusercontent.com/agentcompose/engine/main/README.md and produce a short technical brief: the 3 most important concepts (one tight paragraph each) and a final 'when would I reach for this?' note.",
+    label: "🔗 Fetch → exec brief",
+    goal:
+      "Fetch https://raw.githubusercontent.com/agentcompose/spec/main/README.md and turn it into a crisp 5-bullet executive brief — a one-sentence thesis, the contract's two surfaces, how composition works — with a one-line takeaway for a busy engineering lead.",
+    note: "Coordinated · fetch → writer (two specialists chained).",
+  },
+  // Single-agent — kept deliberately: proof the planner ROUTES to the right specialist
+  // and does not over-decompose. Each routes to a different worker as a single step.
+  {
+    label: "🎯 Research only",
+    goal:
+      "Research the practical trade-offs between Raft and Paxos for a write-heavy, leader-based service — leader election, throughput under contention, operational complexity — and give a recommendation with caveats. Cite sources.",
+    note: "Selection · should route to one specialist (research) — a single step.",
   },
   {
-    label: "🔬 Research: Raft vs Paxos",
-    goal: "Research the practical trade-offs between Raft and Paxos for a write-heavy, leader-based service. Compare leader election, throughput under contention, and operational complexity, then give a clear recommendation with caveats. Cite your sources.",
-  },
-  {
-    label: "🧭 Idea → feasibility → prototype",
-    goal: "Research a few promising niches for a small productivity app, evaluate the top candidates for solo-developer feasibility, then build a minimal prototype of the most feasible one. Confirm the pick with me before building.",
+    label: "🎯 Decide among options",
+    goal:
+      "I'm choosing a CI provider for a small, GitHub-hosted TypeScript library among GitHub Actions, CircleCI, and GitLab CI. Weigh cost, setup effort, speed, and GitHub integration, and recommend one.",
+    note: "Selection · should route to one specialist (analysis) — a single step.",
   },
 ];
 
@@ -59,16 +76,18 @@ const AGENT_SAMPLES: Record<string, Sample[]> = {
   ],
   research: [
     {
+      label: "Agent interop",
+      goal: "Survey the current landscape of AI agent interoperability standards (e.g. MCP, A2A, and peers): what problem each solves, where they overlap, and where the gaps remain. Cite sources.",
+    },
+    {
       label: "Raft vs Paxos",
       goal: "Investigate the practical trade-offs between Raft and Paxos for a write-heavy, leader-based service — leader election, throughput under contention, and operational complexity — then close with a clear recommendation and its caveats. Cite sources.",
     },
     {
-      label: "Consensus trade-offs",
-      goal: "Research how consensus algorithms trade off latency, throughput, and availability across deployment topologies (single-region vs geo-distributed), and summarize when each profile is the right choice. Cite sources.",
-    },
-    {
-      label: "Agent interop",
-      goal: "Survey the current landscape of AI agent interoperability standards (e.g. MCP, A2A, and peers): what problem each solves, where they overlap, and where the gaps remain. Cite sources.",
+      label: "📱 App opportunity scan",
+      goal:
+        "Investigate the market opportunity for a focus/Pomodoro productivity app aimed at remote knowledge workers, intended for the App Store and Google Play. Cover, as distinct angles: (1) the target users and their top unmet needs; (2) the leading existing apps with their pricing, ratings, and most-complained-about weaknesses; (3) viable monetization models — subscription vs one-time vs freemium — with rough market benchmarks; (4) the categories and keywords that drive discoverability (ASO); and (5) the main risks (platform policies, competitive saturation, retention). Close with a clear go/no-go recommendation and the single sharpest feature wedge to differentiate. Cite your sources.",
+      note: "Big · the 'discover & validate' step of the app-making loop — multi-angle market/competitor/monetization/ASO scan → go/no-go.",
     },
   ],
   // Analysis is a GENERAL evaluator: it scores supplied options against weighted criteria
@@ -98,20 +117,33 @@ const AGENT_SAMPLES: Record<string, Sample[]> = {
       note: "Medium · competitive preset (market gap, differentiation, demand, moat…).",
     },
     {
-      label: "Datastore (custom weights)",
-      goal: "Pick a primary datastore for a write-heavy, multi-tenant SaaS backend and justify the choice.",
+      label: "📱 Rank app ideas to build",
+      goal:
+        "Rank these candidate app ideas for a solo developer aiming to publish to the app stores and earn revenue within six months, then recommend which to build first and justify it against the criteria.\n\n" +
+        "Evidence:\n" +
+        "- Focus/Pomodoro timer: large but crowded market; top apps charge $3–5/mo; reviews complain of bloat and intrusive ads; ASO highly competitive; moderate build effort; retention is habitual but churny.\n" +
+        "- Plant-care reminder: mid-size, passionate niche; few polished apps; photo plant-ID is a strong differentiator but adds real effort; monetization via one-time purchase + IAP; lower competition; seasonal usage.\n" +
+        "- Receipt/expense scanner for freelancers: high willingness to pay ($8–12/mo); strong incumbents; needs reliable OCR (high effort, accuracy risk); excellent retention via recurring monthly need.\n" +
+        "- Daily-gratitude journal: very low build effort; saturated category; weak monetization; high churn after the first week.",
       config: {
         preset: "custom",
         scale: 10,
         criteria: [
-          { name: "write throughput", weight: 3 },
-          { name: "operational complexity", weight: 2, invert: true },
-          { name: "cost", weight: 2, invert: true },
-          { name: "ecosystem maturity", weight: 1 },
+          { name: "market demand", weight: 3 },
+          { name: "monetization potential", weight: 3 },
+          { name: "competition gap", weight: 2 },
+          { name: "build effort", weight: 2, invert: true },
+          { name: "retention potential", weight: 2 },
+          { name: "ASO discoverability", weight: 1 },
         ],
-        options: ["PostgreSQL", "MongoDB", "CockroachDB", "DynamoDB"],
+        options: [
+          "Focus/Pomodoro timer",
+          "Plant-care reminder",
+          "Receipt/expense scanner for freelancers",
+          "Daily-gratitude journal",
+        ],
       },
-      note: "Higher · custom weighted criteria, with inverted cost/complexity.",
+      note: "Big · evidence-in ranking against weighted app-business criteria — the 'validate & pick' gate after research.",
     },
     {
       label: "Decide from evidence",
@@ -145,11 +177,6 @@ function codingSamples(cwd?: string): Sample[] {
       note: "Trivial · one file, disposable temp workspace.",
     },
     {
-      label: "FizzBuzz + run",
-      goal: "Write fizzbuzz.js that prints FizzBuzz for 1–30, add a one-line comment explaining the modulo trick, run it with node, and show me the output.",
-      note: "Simple · write + execute, disposable temp workspace.",
-    },
-    {
       label: "Mini CLI (multi-file)",
       goal:
         "Create a tiny zero-dependency Node project: package.json (type module, a \"start\" script) and cli.js that parses a --name flag and prints 'Hello, <name>!' (default 'world'). Then run `node cli.js --name AgentCompose` and show the output.",
@@ -161,6 +188,17 @@ function codingSamples(cwd?: string): Sample[] {
         "Write slugify.js exporting slugify(str) (lowercase, spaces→dashes, strip non-alphanumerics, collapse repeated dashes) and slugify.test.js using Node's built-in node:test + node:assert. Run `node --test` and iterate until every test passes. Show the final code and the passing test output.",
       config: { maxTurns: 40 },
       note: "Higher · test-driven loop (iterates to green), disposable temp workspace.",
+    },
+    {
+      label: "📱 Build the MVP slice",
+      goal:
+        "Build a small but real, runnable slice of a habit-tracker app as a zero-dependency TypeScript Node project. " +
+        "Create a HabitStore module that can add a habit, mark a habit done for today, and compute both the current streak and the longest streak, persisting state to a local JSON file. " +
+        "Add a CLI so `node habit.js add \"Read 20 min\"`, `node habit.js done <id>`, and `node habit.js list` work (list shows each habit with its current streak). " +
+        "Write node:test unit tests for the streak logic — including a case where a missed day breaks the streak — and run `node --test` until everything passes. " +
+        "Then demonstrate the CLI end to end (add two habits, complete one, list them) and show the real output.",
+      config: { maxTurns: 60 },
+      note: "Big · a real runnable app slice (domain + persistence + CLI + tests), disposable temp workspace — the 'build' node.",
     },
     {
       label: "📖 Read this codebase",

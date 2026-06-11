@@ -39,6 +39,10 @@ export function App() {
 
   const switchMode = (m: Mode) => {
     setMode(m);
+    // Steps are an engine-layer concept (a unit of the master's plan). A single worker
+    // has no steps — its internal structure (even an asAgent-composed one) surfaces as
+    // trace spans, not steps. So agent mode shows only Trace.
+    if (m === "agent") setView("trace");
     run.reset();
   };
 
@@ -104,12 +108,14 @@ export function App() {
               >
                 Trace{run.spans.length ? ` (${run.spans.length})` : ""}
               </button>
-              <button
-                onClick={() => setView("steps")}
-                className={`btn btn-sm ${view === "steps" ? "btn-primary" : "btn-ghost"}`}
-              >
-                Steps
-              </button>
+              {mode === "engine" && (
+                <button
+                  onClick={() => setView("steps")}
+                  className={`btn btn-sm ${view === "steps" ? "btn-primary" : "btn-ghost"}`}
+                >
+                  Steps
+                </button>
+              )}
             </div>
           </div>
           <div className="max-h-[58vh] space-y-3 overflow-auto p-3.5">
