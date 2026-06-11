@@ -8,6 +8,10 @@
 // base defaults). Per-run configuration is layered on top at call time via the
 // uniform `AgentClient.configure()`, exactly as the spec prescribes. To plug in a new
 // worker (e.g. @agentcompose/coding-agent), add it as a dependency and append one entry.
+//
+// Registration is necessary but NOT sufficient: a useful addition also ships a few
+// powerful per-agent samples and prompts a review of the engine-mode goals. See the
+// README → "Adding an agent" checklist (and `web/src/components/Composer.tsx`).
 import type { AgentDefinition } from "@agentcompose/sdk";
 import { makeResearchAgent, tavily } from "@agentcompose/research-agent";
 import { makeCodingAgent } from "@agentcompose/coding-agent";

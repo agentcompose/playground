@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { type Artifact, type StepView, partsToText } from "../types.ts";
-import { PartView } from "./PartView.tsx";
+import { PartView, TextBody } from "./PartView.tsx";
 
 const BADGE: Record<StepView["state"], string> = {
   pending: "bg-panel2 text-dim",
@@ -44,6 +44,7 @@ function ArtifactCard({ artifact }: { artifact: Artifact }) {
 
 function StepCard({ step }: { step: StepView }) {
   const [open, setOpen] = useState(false);
+  const [inOpen, setInOpen] = useState(false);
   const body = step.output ?? step.messages;
   const artifacts = step.artifacts ?? [];
   return (
@@ -58,17 +59,32 @@ function StepCard({ step }: { step: StepView }) {
       </div>
       {step.progress && <div className="mt-1.5 text-xs text-dim">{step.progress}</div>}
       {(step.instruction || step.inputFrom?.length) && (
-        <div className="mt-1.5 text-[11.5px] text-dim">
-          <span className="text-[#5b6477]">input</span>
-          {step.inputFrom?.length ? (
-            <span className="ml-1">
-              from{" "}
-              {step.inputFrom.map((f) => (
-                <span key={f} className="mr-1 rounded bg-panel2 px-1 py-0.5 font-mono text-[10.5px] text-accent">{f}</span>
-              ))}
-            </span>
-          ) : null}
-          {step.instruction && <span className="ml-1 text-[#9aa4b8] italic">“{step.instruction}”</span>}
+        <div className="mt-1.5">
+          <button
+            onClick={() => setInOpen((o) => !o)}
+            className="flex items-center gap-1.5 text-[11.5px] text-dim hover:text-white"
+          >
+            <span aria-hidden>{inOpen ? "▾" : "▸"}</span>
+            <span className="text-[#5b6477]">input</span>
+            {step.inputFrom?.length ? (
+              <span className="flex gap-1">
+                {step.inputFrom.map((f) => (
+                  <span key={f} className="rounded bg-panel2 px-1 py-0.5 font-mono text-[10.5px] text-accent">{f}</span>
+                ))}
+              </span>
+            ) : null}
+          </button>
+          {inOpen && (
+            <div className="mt-1.5">
+              {step.instruction ? (
+                <TextBody text={step.instruction} />
+              ) : (
+                <div className="text-[11.5px] italic text-dim">
+                  No added instruction — feeds {step.inputFrom?.join(", ")} through unchanged.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
       {step.error && <div className="mt-1.5 text-xs text-err">{step.error}</div>}
@@ -85,9 +101,9 @@ function StepCard({ step }: { step: StepView }) {
             {open ? "▾ hide output" : "▸ show output"} ({body.length} chars)
           </button>
           {open && (
-            <pre className="mt-1.5 max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-bg p-2 font-mono text-[12.5px] text-[#cbd2e0]">
-              {body}
-            </pre>
+            <div className="mt-1.5">
+              <TextBody text={body} />
+            </div>
           )}
         </div>
       )}

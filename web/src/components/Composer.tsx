@@ -12,8 +12,10 @@ interface Sample {
 }
 
 const SAMPLES: Sample[] = [
-  // Coordinated (multi-agent) — what engine mode is for: the master plans across the
-  // roster and chains specialists. These should fan out into multiple steps.
+  // Engine-mode goals. Two flavors, kept in balance (see README → "Adding an agent"):
+  //   • Coordinated (🔗/📱) — fan out across the roster and chain specialists.
+  //   • Selection (🎯) — prove the planner routes to ONE specialist and doesn't over-decompose.
+  // When a new agent joins the catalog, revisit these: add a goal that uses it, drop/update stale ones.
   {
     label: "📱 App idea → rank → MVP",
     goal:
@@ -45,9 +47,12 @@ const SAMPLES: Sample[] = [
   },
 ];
 
-// Per-agent sample goals for single-agent mode. Written to actually exercise each
-// worker's behavior — research shows multi-angle cited synthesis, analysis shows
-// weighted scoring, coding writes & runs real code — so one run is a fair demonstration.
+// Per-agent sample goals for single-agent mode. CONVENTION (see README → "Adding an
+// agent"): every catalog agent ships a few *powerful* samples here — not toys. Write
+// them to actually exercise the worker's behavior, tiered from a quick proof to a
+// substantial run, with at least one tied to the app-making use case (the 📱 samples):
+// research shows multi-angle cited synthesis, analysis shows weighted scoring, coding
+// writes & runs real code — so one click is a fair demonstration.
 const AGENT_SAMPLES: Record<string, Sample[]> = {
   research: [
     {

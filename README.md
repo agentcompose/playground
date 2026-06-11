@@ -35,7 +35,8 @@ The registry is built from **one declarative catalog** ([`server/catalog.ts`](se
 each entry pairs a stable `name` with an `AgentDefinition`. Both the engine registries
 and single-agent mode are derived from it, and the UI dropdown + roster are generated
 from `/config`. **Adding an agent is a one-line change** in the catalog (plus a
-dependency) — no edits to `server.ts` or the UI.
+dependency) — no edits to `server.ts` or the UI. (A *useful* addition is more than that
+— see [**Adding an agent**](#adding-an-agent) below.)
 
 > **On dependencies:** the *engine core* stays dependency-free by design. This is the
 > *product* layer, so it uses a real stack — **Vite + React + TypeScript + Tailwind**
@@ -45,10 +46,40 @@ dependency) — no edits to `server.ts` or the UI.
 It runs **real work**, not canned strings — the only honest way to evaluate the engine.
 The worker agents are thin adapters at the right altitude:
 
-| Agent | Wraps | Why |
-|-------|-------|-----|
-| `fetch` | a real HTTP GET (+ HTML→text) | gives the planner real content to work on |
-| `writer` | your LLM via **provider injection** (BYO-model) | proves the spec's model injection on the worker side |
+| Agent | Wraps | Role |
+|-------|-------|------|
+| `research` | a deep-research loop — multi-angle search (pluggable: fixture / Tavily) + LLM synthesis, BYO-model | **gather** — real, cited findings |
+| `analysis` | an LLM evaluator that scores options against weighted criteria | **decide** — deterministic ranking + recommendation |
+| `coding` | [pi-coding-agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) in a disposable workspace (read/write/run tools) | **build** — writes & runs real code |
+
+Together they form the **gather → decide → build** spine of the app-making use case.
+
+## Adding an agent
+
+Registering an agent is a one-line change in [`server/catalog.ts`](server/catalog.ts) —
+but a *useful* addition is more than registration. An agent that joins the roster should
+ship with everything that makes it **demonstrable** and **judge-able**:
+
+1. **Register it** — append a `{ name, def }` entry in `server/catalog.ts` (and add the
+   package as a dependency). The engine registries, single-agent dropdown, roster, and
+   config form are all derived from this; no edits to `server.ts` or the UI.
+2. **Ship a few _powerful_ samples** in `web/src/components/Composer.tsx`
+   (`AGENT_SAMPLES[<name>]`). **Not toys.** Each should exercise the agent's real
+   behavior, tiered from a quick proof to a substantial run, and at least one should tie
+   into the app-making use case (the 📱 samples). An agent with no samples is invisible
+   to anyone evaluating it.
+3. **Review the engine-mode goals** (`SAMPLES` in the same file). A new specialist
+   changes what the master *can* coordinate, so revisit them: **add** a goal that routes
+   to or chains the newcomer, and **drop/update** any that no longer reflect the roster.
+   Keep the balance — coordinated (🔗/📱) goals that fan out across agents, **plus**
+   selection (🎯) goals that prove the planner routes precisely and doesn't over-decompose.
+4. **Keep the capability general.** Verticalize through composition and samples, not by
+   specializing the agent. The agent stays a horizontal component; a concrete use case
+   (e.g. app-making) is expressed in the *sample*, not baked into the worker.
+
+> **Rule of thumb:** an agent is "added" when you can pick it from the dropdown, run a
+> sample that shows it doing real work, **and** the master has at least one goal that
+> uses it. Registration alone is necessary, not sufficient.
 
 ## Run
 
@@ -84,26 +115,28 @@ Environment:
 
 | Var | Default | Notes |
 |-----|---------|-------|
-| `OPENAI_API_KEY` | _(required)_ | drives both the planner (brain) and the `writer` agent |
+| `OPENAI_API_KEY` | _(required)_ | drives the planner (brain) and the worker agents (BYO-model) |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | any OpenAI-compatible endpoint / gateway |
 | `OPENAI_MODEL` | `gpt-4o-mini` | the model id |
 | `PORT` | `5173` | |
 
-Try a sample goal (buttons in the UI), e.g.:
+Try a sample goal (buttons in the UI), e.g. (engine mode):
 
-> _Fetch https://raw.githubusercontent.com/agentcompose/spec/main/README.md and write a 5-bullet executive summary._
+> _Research the leading datastores for a write-heavy multi-tenant SaaS backend, then
+> score them on write throughput, ops complexity, cost, and ecosystem and recommend one._
 
-With **Govern fetch** on, the run **suspends** before fetching and waits for your
-Approve/Deny — that's the engine's durable governor + HITL path made tangible.
+With **Govern coding** on, a run that reaches the coding agent **suspends** before any
+code is written/run and waits for your Approve/Deny — that's the engine's durable
+governor + HITL path made tangible.
 
 ## Is it valuable? — what to look for
 
 | Watch for | The claim it tests |
 |-----------|--------------------|
 | Does the planner pick a sensible decomposition you didn't hand-script? | the engine is a real **brain**, not a fixed workflow |
-| Swap `writer` for another agent **without touching the engine** | "reusable component" composition is real |
-| Tweak the `writer` config (style) and re-run | "configurable component" is real |
-| Approve/Deny a `fetch` step | governance / HITL is a feature, not a slogan |
+| Swap one worker for another **without touching the engine** | "reusable component" composition is real |
+| Tweak a worker's config (e.g. research's `angles`, analysis's `criteria`) and re-run | "configurable component" is real |
+| Approve/Deny a governed `coding` step | governance / HITL is a feature, not a slogan |
 
 ## How it's wired
 
@@ -113,8 +146,9 @@ graph LR
     SRV --> ENG[Engine<br/>dynamicPlanner + governor]
     ENG -->|decide| DEC[OpenAI-compatible decider<br/>the brain]
     ENG -->|delegate| REG[Registry]
-    REG --> FETCH[fetch agent<br/>real HTTP]
-    REG --> WRITER[writer agent<br/>your LLM]
+    REG --> RESEARCH[research agent<br/>search + synthesis]
+    REG --> ANALYSIS[analysis agent<br/>weighted scoring]
+    REG --> CODING[coding agent<br/>writes & runs code]
 ```
 
 ```
@@ -122,7 +156,7 @@ playground/
   server/          zero-dep Node backend (http + SSE)
     server.ts      engine wiring + single-agent runner + REST/SSE endpoints
     catalog.ts     declarative agent catalog (single source of truth)
-    agents.ts      real fetch + writer agents (SDK)
+                   workers come from @agentcompose/{research,analysis,coding}-agent
   web/             Vite + React + TypeScript + Tailwind front end
     src/
       hooks/useRun.ts     SSE stream → React state (mode-agnostic)
@@ -135,7 +169,7 @@ playground/
 - **Durability is in-memory.** Resume works within a running process (HITL approval),
   but a process restart loses suspended runs. Cross-restart durability lands with the
   engine's persistence adapter (a separate, tracked engine item).
-- **One governance policy** (approve `fetch`). The governor seam supports arbitrary
+- **One governance policy** (approve `coding`). The governor seam supports arbitrary
   policies; the UI just exposes a single toggle for now.
 
 ## License
