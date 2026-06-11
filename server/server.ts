@@ -69,7 +69,7 @@ const decider = openAICompatibleDecider({ baseUrl, apiKey, model });
 const planner = dynamicPlanner({ decider, registry: plainRegistry, maxRounds: 8 });
 const checkpoints = new InMemoryCheckpointStore();
 
-// Engines are a 2×2 of (govern fetch) × (clarify research), memoized and sharing one
+// Engines are a 2×2 of (govern coding) × (clarify research), memoized and sharing one
 // checkpoint store so any can resume/route-input into a suspended run.
 const engineCache = new Map<string, Engine>();
 function engineFor(govern: boolean, clarify: boolean): Engine {
@@ -80,7 +80,7 @@ function engineFor(govern: boolean, clarify: boolean): Engine {
       registry: clarify ? clarifyRegistry : plainRegistry,
       planner,
       checkpoints,
-      ...(govern ? { governor: approveWhen((s) => s.agent === "fetch") } : {}),
+      ...(govern ? { governor: approveWhen((s) => s.agent === "coding") } : {}),
     });
     engineCache.set(key, e);
   }

@@ -54,7 +54,7 @@ export type EngineEvent =
   | { type: "run-started"; runId: string }
   | { type: "config-resolved"; config: Record<string, unknown> }
   | { type: "plan"; steps: { id: string; agent: string }[] }
-  | { type: "step-started"; stepId: string; agent: string }
+  | { type: "step-started"; stepId: string; agent: string; instruction?: string; inputFrom?: string[] }
   | { type: "progress"; stepId: string; percent?: number; message?: string }
   | { type: "message"; stepId: string; delta: Part }
   | { type: "artifact"; stepId: string; artifact: Artifact }
@@ -91,6 +91,8 @@ export interface StepView {
   agent: string;
   state: StepState;
   progress?: string;
+  instruction?: string;
+  inputFrom?: string[];
   messages: string;
   output?: string;
   error?: string;

@@ -125,7 +125,13 @@ export function useRun(): RunState {
           ev.steps.forEach((s) => upsert(s.id, { agent: s.agent, state: "pending" as StepState }));
           break;
         case "step-started":
-          upsert(ev.stepId, { agent: ev.agent, state: "running", startedAt: Date.now() });
+          upsert(ev.stepId, {
+            agent: ev.agent,
+            state: "running",
+            startedAt: Date.now(),
+            ...(ev.instruction ? { instruction: ev.instruction } : {}),
+            ...(ev.inputFrom ? { inputFrom: ev.inputFrom } : {}),
+          });
           break;
         case "progress":
           upsert(ev.stepId, {

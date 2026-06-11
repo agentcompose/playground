@@ -22,7 +22,7 @@ function fmtDuration(ms: number): string {
 }
 
 function ArtifactCard({ artifact }: { artifact: Artifact }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const chars = partsToText(artifact.parts).length;
   return (
     <div className="rounded-md border border-line bg-bg/60">
@@ -57,6 +57,20 @@ function StepCard({ step }: { step: StepView }) {
         <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] ${BADGE[step.state]}`}>{step.state}</span>
       </div>
       {step.progress && <div className="mt-1.5 text-xs text-dim">{step.progress}</div>}
+      {(step.instruction || step.inputFrom?.length) && (
+        <div className="mt-1.5 text-[11.5px] text-dim">
+          <span className="text-[#5b6477]">input</span>
+          {step.inputFrom?.length ? (
+            <span className="ml-1">
+              from{" "}
+              {step.inputFrom.map((f) => (
+                <span key={f} className="mr-1 rounded bg-panel2 px-1 py-0.5 font-mono text-[10.5px] text-accent">{f}</span>
+              ))}
+            </span>
+          ) : null}
+          {step.instruction && <span className="ml-1 text-[#9aa4b8] italic">“{step.instruction}”</span>}
+        </div>
+      )}
       {step.error && <div className="mt-1.5 text-xs text-err">{step.error}</div>}
       {artifacts.length > 0 && (
         <div className="mt-2 space-y-1.5">

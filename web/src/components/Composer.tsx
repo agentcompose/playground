@@ -29,12 +29,6 @@ const SAMPLES: Sample[] = [
       "Research the leading options for a primary datastore for a write-heavy, multi-tenant SaaS backend, then score them against write throughput, operational complexity, cost, and ecosystem maturity and recommend one with its trade-offs.",
     note: "Coordinated · research → analysis (gather, then decide).",
   },
-  {
-    label: "🔗 Fetch → exec brief",
-    goal:
-      "Fetch https://raw.githubusercontent.com/agentcompose/spec/main/README.md and turn it into a crisp 5-bullet executive brief — a one-sentence thesis, the contract's two surfaces, how composition works — with a one-line takeaway for a busy engineering lead.",
-    note: "Coordinated · fetch → writer (two specialists chained).",
-  },
   // Single-agent — kept deliberately: proof the planner ROUTES to the right specialist
   // and does not over-decompose. Each routes to a different worker as a single step.
   {
@@ -52,28 +46,9 @@ const SAMPLES: Sample[] = [
 ];
 
 // Per-agent sample goals for single-agent mode. Written to actually exercise each
-// worker's behavior — fetch pulls real content, writer shows tone/format control,
-// research shows multi-angle cited synthesis — so one run is a fair demonstration.
+// worker's behavior — research shows multi-angle cited synthesis, analysis shows
+// weighted scoring, coding writes & runs real code — so one run is a fair demonstration.
 const AGENT_SAMPLES: Record<string, Sample[]> = {
-  fetch: [
-    { label: "spec README", goal: "https://raw.githubusercontent.com/agentcompose/spec/main/README.md" },
-    { label: "engine README", goal: "https://raw.githubusercontent.com/agentcompose/engine/main/README.md" },
-    { label: "example.com", goal: "https://example.com" },
-  ],
-  writer: [
-    {
-      label: "Exec summary",
-      goal: "Write a 5-bullet executive summary of this idea, then a one-line takeaway: AgentCompose runs autonomous agents as reusable, configurable components — ship sensible defaults, expose typed knobs (model, prompt, tools, limits), and compose them into pipelines.",
-    },
-    {
-      label: "Tweet thread",
-      goal: "Turn this into a punchy, numbered 3-tweet thread for developers (≤280 chars each, no hashtags): orchestrating AI agents is hard because every agent ships its own interface; a shared contract makes them swappable, configurable, and composable.",
-    },
-    {
-      label: "Tone rewrite",
-      goal: "Rewrite the following as two labeled versions — (1) formal release-notes tone, (2) casual changelog tone: 'we added a thing that lets agents talk to each other and get configured without forking the code.'",
-    },
-  ],
   research: [
     {
       label: "Agent interop",
@@ -312,11 +287,11 @@ export function Composer({
           {mode === "engine" && (
             <>
               <label
-                title="Engine policy (not the model): suspend before any step that calls the fetch agent and ask you to approve or deny. This is the governor / HITL gate."
+                title="Engine policy (not the model): suspend before any step that calls the coding agent and ask you to approve or deny before code is written/run. This is the governor / HITL gate."
                 className="flex cursor-pointer items-center gap-2 px-1 text-[13px] text-dim select-none"
               >
                 <input type="checkbox" checked={govern} onChange={(e) => setGovern(e.target.checked)} />
-                Govern fetch
+                Govern coding
               </label>
               <label
                 title="Agent behavior: tell the research worker to ask you one scoping question before it starts (via the input-required state). The agent decides to escalate; you answer."

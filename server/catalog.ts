@@ -9,7 +9,6 @@
 // uniform `AgentClient.configure()`, exactly as the spec prescribes. To plug in a new
 // worker (e.g. @agentcompose/coding-agent), add it as a dependency and append one entry.
 import type { AgentDefinition } from "@agentcompose/sdk";
-import { fetchAgent, makeWriter } from "./agents.ts";
 import { makeResearchAgent, tavily } from "@agentcompose/research-agent";
 import { makeCodingAgent } from "@agentcompose/coding-agent";
 import { makeAnalysisAgent } from "@agentcompose/analysis-agent";
@@ -31,8 +30,6 @@ export interface CatalogEnv {
 export function buildCatalog(env: CatalogEnv): CatalogEntry[] {
   const { baseUrl, model, tavilyKey } = env;
   return [
-    { name: "fetch", def: fetchAgent },
-    { name: "writer", def: makeWriter({ baseUrl, model }) },
     {
       name: "research",
       def: makeResearchAgent({
