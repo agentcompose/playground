@@ -209,6 +209,23 @@ function normalizeAgentEvent(step: string, agent: string, ev: TaskEvent): Engine
       return [{ type: "message", stepId: step, delta: ev.delta }];
     case "artifact":
       return [{ type: "artifact", stepId: step, artifact: ev.artifact }];
+    case "span-start":
+      // Pass spans straight through onto the run stream. In single-agent mode the agent's
+      // own root span already roots the trace, so no synthetic step span is imposed.
+      return [{ type: "span-start", span: ev.span }];
+    case "span-end":
+      return [
+        {
+          type: "span-end",
+          traceId: ev.traceId,
+          spanId: ev.spanId,
+          endTime: ev.endTime,
+          status: ev.status,
+          ...(ev.attributes ? { attributes: ev.attributes } : {}),
+          ...(ev.events ? { events: ev.events } : {}),
+          ...(ev.error ? { error: ev.error } : {}),
+        },
+      ];
     case "status":
       // input-required → suspend for an answer; canceled → terminal canceled event.
       if (ev.state === "input-required")

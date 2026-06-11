@@ -15,10 +15,11 @@
     "node": ">=22.18"
   },
   "dependencies": {
-    "@agentcompose/engine": "^0.1.1",
-    "@agentcompose/sdk": "^0.1.0",
+    "@agentcompose/engine": "file:../engine",
+    "@agentcompose/sdk": "file:../sdk-typescript",
     "@agentcompose/research-agent": "file:../research-agent",
-    "@agentcompose/coding-agent": "file:../coding-agent"
+    "@agentcompose/coding-agent": "file:../coding-agent",
+    "@agentcompose/analysis-agent": "file:../analysis-agent"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

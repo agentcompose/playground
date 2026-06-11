@@ -18,6 +18,34 @@ export interface Artifact {
   createdAt?: string;
 }
 
+// Observability spans — the nested trace the engine/agents emit. Mirrors the SDK shape.
+export type AttrValue = string | number | boolean | null | AttrValue[];
+export type AttrMap = Record<string, AttrValue>;
+export interface SpanEvent {
+  time: number;
+  name: string;
+  attributes?: AttrMap;
+}
+export interface SpanStart {
+  traceId: string;
+  spanId: string;
+  parentSpanId?: string;
+  name: string;
+  kind?: string;
+  startTime: number;
+  attributes?: AttrMap;
+}
+export type SpanStatus = "unset" | "ok" | "error";
+
+/** A materialized span (start + end merged) plus its children — the tree the UI renders. */
+export interface SpanView extends SpanStart {
+  endTime?: number;
+  status: SpanStatus;
+  events?: SpanEvent[];
+  error?: RpcError;
+  children: SpanView[];
+}
+
 export type Pending =
   | { kind: "approval"; stepId: string; proposed?: unknown }
   | { kind: "input"; address: { stepId: string; askIndex: number }; prompt?: Part[]; proposed?: unknown };
@@ -37,7 +65,18 @@ export type EngineEvent =
   | { type: "suspended"; reason: Pending }
   | { type: "canceled" }
   | { type: "result"; parts: Part[] }
-  | { type: "error"; error: RpcError };
+  | { type: "error"; error: RpcError }
+  | { type: "span-start"; span: SpanStart }
+  | {
+      type: "span-end";
+      traceId: string;
+      spanId: string;
+      endTime: number;
+      status: SpanStatus;
+      attributes?: AttrMap;
+      events?: SpanEvent[];
+      error?: RpcError;
+    };
 
 export type StepState = "pending" | "running" | "done" | "failed";
 

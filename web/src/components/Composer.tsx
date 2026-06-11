@@ -28,6 +28,10 @@ const SAMPLES: Sample[] = [
     label: "🔬 Research: Raft vs Paxos",
     goal: "Research the practical trade-offs between Raft and Paxos for a write-heavy, leader-based service. Compare leader election, throughput under contention, and operational complexity, then give a clear recommendation with caveats. Cite your sources.",
   },
+  {
+    label: "🧭 Idea → feasibility → prototype",
+    goal: "Research a few promising niches for a small productivity app, evaluate the top candidates for solo-developer feasibility, then build a minimal prototype of the most feasible one. Confirm the pick with me before building.",
+  },
 ];
 
 // Per-agent sample goals for single-agent mode. Written to actually exercise each
@@ -65,6 +69,65 @@ const AGENT_SAMPLES: Record<string, Sample[]> = {
     {
       label: "Agent interop",
       goal: "Survey the current landscape of AI agent interoperability standards (e.g. MCP, A2A, and peers): what problem each solves, where they overlap, and where the gaps remain. Cite sources.",
+    },
+  ],
+  // Analysis is a GENERAL evaluator: it scores supplied options against weighted criteria
+  // and recommends one. "Competitive" and "feasibility" are presets, not separate agents;
+  // tiers below run preset → custom-weighted → evidence-in (the "decide" node pattern).
+  analysis: [
+    {
+      label: "Feasibility of 3 ideas",
+      goal: "Evaluate the feasibility of building each of these as a solo developer in one month, then recommend which to start with.",
+      config: {
+        preset: "feasibility",
+        options: [
+          "A minimalist habit tracker app",
+          "A real-time multiplayer game with custom netcode",
+          "A markdown note-taking PWA",
+        ],
+      },
+      note: "Trivial · feasibility preset, 3 fixed options (inverted effort/cost/risk).",
+    },
+    {
+      label: "Competitive positioning",
+      goal: "Assess the market opportunity for entering the personal note-taking space, score the main approaches, and recommend a positioning.",
+      config: {
+        preset: "competitive",
+        options: ["Local-first markdown editor", "AI-native notes with auto-linking", "Privacy-focused encrypted notes"],
+      },
+      note: "Medium · competitive preset (market gap, differentiation, demand, moat…).",
+    },
+    {
+      label: "Datastore (custom weights)",
+      goal: "Pick a primary datastore for a write-heavy, multi-tenant SaaS backend and justify the choice.",
+      config: {
+        preset: "custom",
+        scale: 10,
+        criteria: [
+          { name: "write throughput", weight: 3 },
+          { name: "operational complexity", weight: 2, invert: true },
+          { name: "cost", weight: 2, invert: true },
+          { name: "ecosystem maturity", weight: 1 },
+        ],
+        options: ["PostgreSQL", "MongoDB", "CockroachDB", "DynamoDB"],
+      },
+      note: "Higher · custom weighted criteria, with inverted cost/complexity.",
+    },
+    {
+      label: "Decide from evidence",
+      goal:
+        "Given the notes below, rank these CI providers for a small open-source TypeScript library and recommend one.\n\nEvidence:\n- GitHub Actions: free for public repos, huge marketplace, native to GitHub, YAML config, occasional queue delays.\n- CircleCI: fast with good caching, limited free tier, a separate account to manage.\n- GitLab CI: powerful and flexible, best when already on GitLab, heavier setup for a GitHub-hosted repo.",
+      config: {
+        preset: "custom",
+        criteria: [
+          { name: "cost", weight: 2, invert: true },
+          { name: "setup effort", weight: 2, invert: true },
+          { name: "speed", weight: 2 },
+          { name: "github integration", weight: 2 },
+        ],
+        options: ["GitHub Actions", "CircleCI", "GitLab CI"],
+      },
+      note: "Evidence-in · ranks from supplied notes — the 'decide' node downstream of research.",
     },
   ],
 };
@@ -202,7 +265,7 @@ export function Composer({
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
           }}
           placeholder={placeholder}
-          className="field min-h-[76px] flex-1 resize-y px-4 py-3"
+          className="field min-h-19 flex-1 resize-y px-4 py-3"
         />
         <div className="flex w-40 flex-col gap-2">
           <button disabled={!canRun} onClick={submit} className="btn btn-primary py-2.5">

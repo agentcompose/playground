@@ -5,6 +5,7 @@ import {
   type LogEntry,
   type Part,
   type RunStatus,
+  type SpanView,
   type StepState,
   type StepView,
   partsToText,
@@ -25,6 +26,7 @@ interface RunState {
   pending?: { stepId: string; agent: string };
   inputAsk?: InputAsk;
   log: LogEntry[];
+  spans: SpanView[];
   startedAt?: number;
   endedAt?: number;
   resolvedConfig?: Record<string, unknown>;
@@ -43,6 +45,7 @@ export function useRun(): RunState {
   const [pending, setPending] = useState<{ stepId: string; agent: string }>();
   const [inputAsk, setInputAsk] = useState<InputAsk>();
   const [log, setLog] = useState<LogEntry[]>([]);
+  const [spans, setSpans] = useState<SpanView[]>([]);
   const [startedAt, setStartedAt] = useState<number>();
   const [endedAt, setEndedAt] = useState<number>();
   const [resolvedConfig, setResolvedConfig] = useState<Record<string, unknown>>();
@@ -50,8 +53,39 @@ export function useRun(): RunState {
   const runIdRef = useRef<string>("");
   const esRef = useRef<EventSource | null>(null);
   const stepsRef = useRef<Map<string, StepView>>(new Map());
+  // Spans arrive as start/end events in any order; we keep an id-keyed registry and
+  // rebuild the parent/child forest from parentSpanId on each change (order-independent).
+  const spansRef = useRef<Map<string, SpanView>>(new Map());
 
   const flush = useCallback(() => setSteps([...stepsRef.current.values()]), []);
+
+  const flushSpans = useCallback(() => {
+    const all = [...spansRef.current.values()];
+    const byId = new Map(all.map((s) => [s.spanId, { ...s, children: [] as SpanView[] }]));
+    const roots: SpanView[] = [];
+    for (const s of byId.values()) {
+      const parent = s.parentSpanId ? byId.get(s.parentSpanId) : undefined;
+      if (parent) parent.children.push(s);
+      else roots.push(s);
+    }
+    const sortRec = (list: SpanView[]) => {
+      list.sort((a, b) => a.startTime - b.startTime);
+      list.forEach((s) => sortRec(s.children));
+    };
+    sortRec(roots);
+    setSpans(roots);
+  }, []);
+
+  const upsertSpan = useCallback(
+    (spanId: string, patch: Partial<SpanView>) => {
+      const cur =
+        spansRef.current.get(spanId) ??
+        ({ spanId, traceId: "", name: "?", startTime: Date.now(), status: "unset", children: [] } as SpanView);
+      spansRef.current.set(spanId, { ...cur, ...patch, attributes: { ...cur.attributes, ...patch.attributes } });
+      flushSpans();
+    },
+    [flushSpans],
+  );
 
   const upsert = useCallback(
     (id: string, patch: Partial<StepView> & { agent?: string }) => {
@@ -74,6 +108,18 @@ export function useRun(): RunState {
       switch (ev.type) {
         case "config-resolved":
           setResolvedConfig(ev.config);
+          break;
+        case "span-start":
+          upsertSpan(ev.span.spanId, { ...ev.span });
+          break;
+        case "span-end":
+          upsertSpan(ev.spanId, {
+            endTime: ev.endTime,
+            status: ev.status,
+            ...(ev.attributes ? { attributes: ev.attributes } : {}),
+            ...(ev.events ? { events: ev.events } : {}),
+            ...(ev.error ? { error: ev.error } : {}),
+          });
           break;
         case "plan":
           ev.steps.forEach((s) => upsert(s.id, { agent: s.agent, state: "pending" as StepState }));
@@ -172,7 +218,9 @@ export function useRun(): RunState {
   const reset = useCallback(() => {
     closeStream();
     stepsRef.current = new Map();
+    spansRef.current = new Map();
     setSteps([]);
+    setSpans([]);
     setResultParts(undefined);
     setError(undefined);
     setPending(undefined);
@@ -225,5 +273,5 @@ export function useRun(): RunState {
     await sendCancel(runIdRef.current);
   }, []);
 
-  return { status, steps, resultParts, error, pending, inputAsk, log, startedAt, endedAt, resolvedConfig, run, approve, answer, cancel, reset };
+  return { status, steps, resultParts, error, pending, inputAsk, log, spans, startedAt, endedAt, resolvedConfig, run, approve, answer, cancel, reset };
 }

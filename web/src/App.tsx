@@ -5,6 +5,7 @@ import { Composer } from "./components/Composer.tsx";
 import { ModeToggle } from "./components/ModeToggle.tsx";
 import { defaultsFromSchema } from "./components/ConfigForm.tsx";
 import { StepTimeline } from "./components/StepTimeline.tsx";
+import { TraceTree } from "./components/TraceTree.tsx";
 import { ApprovalCard } from "./components/ApprovalCard.tsx";
 import { InputCard } from "./components/InputCard.tsx";
 import { ResultPanel } from "./components/ResultPanel.tsx";
@@ -20,6 +21,7 @@ export function App() {
   const [mode, setMode] = useState<Mode>("engine");
   const [selectedAgent, setSelectedAgent] = useState<string>();
   const [config, setConfig] = useState<Record<string, unknown>>({});
+  const [view, setView] = useState<"trace" | "steps">("trace");
 
   useEffect(() => {
     getConfig().then(setCfg).catch(() => setCfg(null));
@@ -91,9 +93,25 @@ export function App() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="card">
-          <h2 className="border-b border-line px-4 py-2.5 text-xs uppercase tracking-wide text-dim">
-            {mode === "engine" ? "Plan & steps" : "Run"}
-          </h2>
+          <div className="flex items-center gap-2 border-b border-line px-4 py-2">
+            <h2 className="text-xs uppercase tracking-wide text-dim">
+              {mode === "engine" ? "Plan & steps" : "Run"}
+            </h2>
+            <div className="ml-auto flex gap-1">
+              <button
+                onClick={() => setView("trace")}
+                className={`btn btn-sm ${view === "trace" ? "btn-primary" : "btn-ghost"}`}
+              >
+                Trace{run.spans.length ? ` (${run.spans.length})` : ""}
+              </button>
+              <button
+                onClick={() => setView("steps")}
+                className={`btn btn-sm ${view === "steps" ? "btn-primary" : "btn-ghost"}`}
+              >
+                Steps
+              </button>
+            </div>
+          </div>
           <div className="max-h-[58vh] space-y-3 overflow-auto p-3.5">
             {mode === "agent" && run.resolvedConfig && (
               <EffectiveConfig submitted={config} resolved={run.resolvedConfig} />
@@ -109,7 +127,7 @@ export function App() {
                 onAnswer={run.answer}
               />
             )}
-            <StepTimeline steps={run.steps} />
+            {view === "trace" ? <TraceTree spans={run.spans} /> : <StepTimeline steps={run.steps} />}
           </div>
         </section>
 

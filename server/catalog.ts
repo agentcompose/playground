@@ -12,6 +12,7 @@ import type { AgentDefinition } from "@agentcompose/sdk";
 import { fetchAgent, makeWriter } from "./agents.ts";
 import { makeResearchAgent, tavily } from "@agentcompose/research-agent";
 import { makeCodingAgent } from "@agentcompose/coding-agent";
+import { makeAnalysisAgent } from "@agentcompose/analysis-agent";
 
 export interface CatalogEntry {
   /** Registry key + dropdown id (stable, lowercase). */
@@ -42,5 +43,9 @@ export function buildCatalog(env: CatalogEnv): CatalogEntry[] {
     // Coding worker (@agentcompose/coding-agent): wraps pi, runs in a disposable temp
     // workspace per run, returns a summary + diffs. Drives the same OpenAI gateway.
     { name: "coding", def: makeCodingAgent({ defaults: { baseUrl, model } }) },
+    // Analysis worker (@agentcompose/analysis-agent): scores options against weighted
+    // criteria over supplied evidence and returns a ranked verdict + recommendation.
+    // The natural "decide" node between research (gather) and coding (build).
+    { name: "analysis", def: makeAnalysisAgent({ defaults: { baseUrl, model } }) },
   ];
 }
