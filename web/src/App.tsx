@@ -63,7 +63,7 @@ export function App() {
         </div>
       </header>
 
-      <p className="text-xs text-dim">
+      <p className="text-sm text-dim">
         {mode === "engine" ? (
           <>
             <span className="font-medium text-white">Engine mode</span> — give the{" "}

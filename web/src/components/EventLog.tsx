@@ -80,7 +80,7 @@ export function EventLog({ log }: { log: LogEntry[] }) {
           {open ? "▾" : "▸"} Event log ({log.length})
         </button>
         {open && (
-          <div className="flex items-center gap-3 text-[11px] text-dim">
+          <div className="flex items-center gap-3 text-xs text-dim">
             <label className="flex cursor-pointer items-center gap-1.5 select-none">
               <input type="checkbox" checked={hideNoise} onChange={(e) => setHideNoise(e.target.checked)} />
               hide progress/message{noiseCount > 0 && ` (${noiseCount})`}
@@ -95,11 +95,11 @@ export function EventLog({ log }: { log: LogEntry[] }) {
 
       {open &&
         (raw ? (
-          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-bg p-3 font-mono text-[11px] text-dim">
+          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-bg p-3 font-mono text-xs text-dim">
             {shown.map((e, i) => `${i.toString().padStart(2, "0")}  ${JSON.stringify(e.ev)}`).join("\n")}
           </pre>
         ) : (
-          <div className="mt-2 max-h-72 overflow-auto rounded-lg border border-line bg-bg p-2 font-mono text-[11.5px]">
+          <div className="mt-2 max-h-72 overflow-auto rounded-lg border border-line bg-bg p-2 font-mono text-[12.5px]">
             {shown.length === 0 ? (
               <div className="px-1 py-0.5 text-dim italic">No events yet.</div>
             ) : (
@@ -107,7 +107,7 @@ export function EventLog({ log }: { log: LogEntry[] }) {
                 const m = meta(e.ev.type);
                 return (
                   <div key={i} className="flex items-baseline gap-2 px-1 py-0.5">
-                    <span className="w-12 shrink-0 text-right text-[10px] text-[#5b6477]">{dt(e.t, t0)}</span>
+                    <span className="w-12 shrink-0 text-right text-[11.5px] text-[#5b6477]">{dt(e.t, t0)}</span>
                     <span className={`w-4 shrink-0 text-center ${m.cls}`}>{m.icon}</span>
                     <span className={`w-28 shrink-0 ${m.cls}`}>{e.ev.type}</span>
                     <span className="truncate text-[#9aa4b8]">{summarize(e.ev)}</span>

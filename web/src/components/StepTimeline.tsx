@@ -28,7 +28,7 @@ function ArtifactCard({ artifact }: { artifact: Artifact }) {
     <div className="rounded-md border border-line bg-bg/60">
       <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left">
         <span aria-hidden className="text-dim">{open ? "▾" : "▸"}</span>
-        <span className="text-[11px] text-accent">📎 {artifact.name ?? artifact.id}</span>
+        <span className="text-[12.5px] text-accent">📎 {artifact.name ?? artifact.id}</span>
         <span className="ml-auto text-[10px] text-dim">{chars} chars</span>
       </button>
       {open && (
@@ -67,11 +67,11 @@ function StepCard({ step }: { step: StepView }) {
       )}
       {body && (
         <div className="mt-2">
-          <button onClick={() => setOpen((o) => !o)} className="text-[11px] text-dim hover:text-white">
+          <button onClick={() => setOpen((o) => !o)} className="text-xs text-dim hover:text-white">
             {open ? "▾ hide output" : "▸ show output"} ({body.length} chars)
           </button>
           {open && (
-            <pre className="mt-1.5 max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-bg p-2 font-mono text-[11.5px] text-[#cbd2e0]">
+            <pre className="mt-1.5 max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-bg p-2 font-mono text-[12.5px] text-[#cbd2e0]">
               {body}
             </pre>
           )}

@@ -49,25 +49,25 @@ function SpanRow({ span, depth }: { span: SpanView; depth: number }) {
         </button>
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[span.status]}`} />
         <span className="shrink-0 text-xs">{kindIcon(span.kind)}</span>
-        <span className="truncate text-[12.5px] text-[#dde3ee]" title={span.name}>
+        <span className="truncate text-[14px] text-[#dde3ee]" title={span.name}>
           {span.name}
         </span>
-        {span.kind && <span className="shrink-0 text-[10px] text-dim">{span.kind}</span>}
-        <span className="ml-auto shrink-0 font-mono text-[10.5px] text-dim">{fmtDur(span)}</span>
+        {span.kind && <span className="shrink-0 text-[11.5px] text-dim">{span.kind}</span>}
+        <span className="ml-auto shrink-0 font-mono text-[12px] text-dim">{fmtDur(span)}</span>
       </div>
 
       {open && hasDetail && (
         <div className="space-y-0.5 py-0.5" style={{ paddingLeft: depth * 14 + 30 }}>
           {attrs.map(([k, v]) => (
-            <div key={k} className="flex gap-2 font-mono text-[11px]">
+            <div key={k} className="flex gap-2 font-mono text-[12.5px]">
               <span className="text-[#7d869b]">{k}</span>
               <span className="truncate text-[#aab3c5]">{JSON.stringify(v)}</span>
             </div>
           ))}
           {span.events?.map((e, i) => (
-            <div key={i} className="font-mono text-[11px] text-[#c08cf0]">⚑ {e.name}</div>
+            <div key={i} className="font-mono text-[12.5px] text-[#c08cf0]">⚑ {e.name}</div>
           ))}
-          {span.error && <div className="font-mono text-[11px] text-err">✗ {span.error.message}</div>}
+          {span.error && <div className="font-mono text-[12.5px] text-err">✗ {span.error.message}</div>}
         </div>
       )}
 

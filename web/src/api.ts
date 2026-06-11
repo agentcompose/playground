@@ -22,6 +22,7 @@ export interface JsonSchemaProp {
   enum?: unknown[];
   minimum?: number;
   maximum?: number;
+  items?: { type?: string | string[]; [key: string]: unknown };
   [key: string]: unknown;
 }
 

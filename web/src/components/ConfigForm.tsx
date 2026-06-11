@@ -1,16 +1,22 @@
+import { useEffect, useState, type ReactNode } from "react";
 import type { JsonSchema, JsonSchemaProp } from "../api.ts";
 
 // Renders an agent's configuration surface straight from its declared JSON Schema
 // (descriptor.configSchema). This is what turns "a dropdown of names" into "test and
 // CONFIGURE any agent" — and it's the spec's "configurable component" claim made
-// tangible. Only flat primitive knobs (string/number/boolean/enum) are rendered as
-// inputs; complex defaults (e.g. the BYO-model `provider` object) are shown read-only
-// so they're visible without being foot-guns. Values flow up via onChange and are sent
-// verbatim to the worker through AgentClient.configure().
+// tangible. Primitive knobs (string/number/boolean/enum) render as native inputs;
+// string[] arrays render as an editable list; objects and object[] (e.g. weighted
+// `criteria`, the BYO-model `provider`) render as a validated JSON editor. Every field
+// reflects the LIVE value (not just the schema default) and flows up via onChange,
+// then ships verbatim to the worker through AgentClient.configure().
 const PRIMITIVE = new Set(["string", "number", "integer", "boolean"]);
 
 function typeOf(p: JsonSchemaProp): string {
   return Array.isArray(p.type) ? (p.type.find((t) => t !== "null") ?? "string") : (p.type ?? "string");
+}
+function itemTypeOf(p: JsonSchemaProp): string | undefined {
+  const it = p.items?.type;
+  return Array.isArray(it) ? it.find((t) => t !== "null") : it;
 }
 
 /** Seed a config object from a schema's declared defaults (primitives only). */
@@ -20,6 +26,59 @@ export function defaultsFromSchema(schema?: JsonSchema): Record<string, unknown>
     if (prop.default !== undefined && PRIMITIVE.has(typeOf(prop))) out[key] = prop.default;
   }
   return out;
+}
+
+/** Editable list of strings (e.g. `options`, `includeDomains`). One item per line. */
+function ListField({ label, value, onChange }: { label: ReactNode; value: unknown; onChange: (v: string[] | undefined) => void }) {
+  const initial = Array.isArray(value) ? (value as unknown[]).map(String).join("\n") : "";
+  const [text, setText] = useState(initial);
+  useEffect(() => { setText(Array.isArray(value) ? (value as unknown[]).map(String).join("\n") : ""); }, [JSON.stringify(value)]);
+  return (
+    <label className="flex flex-col gap-1 sm:col-span-2">
+      {label}
+      <textarea
+        className="field font-mono text-[11px]"
+        rows={Math.min(6, Math.max(2, text.split("\n").length))}
+        placeholder="one value per line"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          const arr = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean);
+          onChange(arr.length ? arr : undefined);
+        }}
+      />
+    </label>
+  );
+}
+
+/** Editable, validated JSON for objects / object arrays (e.g. `criteria`, `provider`). */
+function JsonField({ label, value, fallback, onChange }: { label: ReactNode; value: unknown; fallback?: unknown; onChange: (v: unknown) => void }) {
+  const show = value !== undefined ? value : fallback;
+  const [text, setText] = useState(show === undefined ? "" : JSON.stringify(show, null, 2));
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    const v = value !== undefined ? value : fallback;
+    setText(v === undefined ? "" : JSON.stringify(v, null, 2));
+    setErr(null);
+  }, [JSON.stringify(value)]);
+  return (
+    <label className="flex flex-col gap-1 sm:col-span-2">
+      {label}
+      <textarea
+        className="field font-mono text-[11px]"
+        rows={Math.min(12, Math.max(3, text.split("\n").length))}
+        value={text}
+        spellCheck={false}
+        onChange={(e) => {
+          setText(e.target.value);
+          const raw = e.target.value.trim();
+          if (raw === "") { setErr(null); onChange(undefined); return; }
+          try { onChange(JSON.parse(raw)); setErr(null); } catch { setErr("invalid JSON — not applied"); }
+        }}
+      />
+      {err && <span className="text-[10px] text-err">{err}</span>}
+    </label>
+  );
 }
 
 export function ConfigForm({
@@ -48,15 +107,11 @@ export function ConfigForm({
           </span>
         );
 
+        if (t === "array" && itemTypeOf(prop) === "string") {
+          return <ListField key={key} label={label} value={value[key] ?? prop.default} onChange={(v) => set(key, v)} />;
+        }
         if (!PRIMITIVE.has(t)) {
-          return (
-            <label key={key} className="flex flex-col gap-1 sm:col-span-2">
-              {label}
-              <code className="overflow-x-auto rounded-lg border border-line bg-panel2 px-2.5 py-1.5 text-[11px] text-dim">
-                {JSON.stringify(prop.default ?? `(${t})`)}
-              </code>
-            </label>
-          );
+          return <JsonField key={key} label={label} value={value[key]} fallback={prop.default} onChange={(v) => set(key, v)} />;
         }
 
         if (t === "boolean") {
