@@ -19,15 +19,70 @@ body,
 }
 body {
   margin: 0;
-  background: var(--color-bg);
+  background:
+    radial-gradient(1100px 520px at 50% -8%, #121826 0%, transparent 60%),
+    var(--color-bg);
+  background-attachment: fixed;
   color: #e6e9ef;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* thin scrollbars */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line) transparent;
+}
+
+/* ── Small component layer ───────────────────────────────────────────────────
+   A handful of reusable primitives so buttons/selects/inputs stay consistent and
+   feel intentional, without scattering long utility strings across every file. */
+@layer components {
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg;
+    @apply disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-sm {
+    @apply gap-1 rounded-md px-2.5 py-1 text-[12px];
+  }
+  .btn-primary {
+    @apply bg-accent font-semibold text-[#0b1020] shadow-sm shadow-accent/20;
+    @apply enabled:hover:brightness-110 enabled:active:translate-y-px enabled:active:brightness-95;
+  }
+  .btn-ghost {
+    @apply border border-line bg-panel2/70 text-dim;
+    @apply enabled:hover:border-accent/40 enabled:hover:text-white enabled:active:translate-y-px;
+  }
+  .btn-ok {
+    @apply bg-ok font-semibold text-[#06210f] shadow-sm shadow-ok/20;
+    @apply enabled:hover:brightness-110 enabled:active:translate-y-px;
+  }
+  .btn-danger {
+    @apply border border-err/60 font-semibold text-err;
+    @apply enabled:hover:bg-err/10 enabled:hover:border-err enabled:active:translate-y-px;
+  }
+
+  .field {
+    @apply rounded-lg border border-line bg-panel px-3 py-2 text-sm text-[#e6e9ef] outline-none transition;
+    @apply placeholder:text-dim/60 focus:border-accent focus:ring-2 focus:ring-accent/25;
+  }
+  .select {
+    @apply cursor-pointer appearance-none rounded-lg border border-line bg-panel bg-no-repeat px-3 py-2 pr-9 text-sm text-[#e6e9ef] outline-none transition;
+    @apply focus:border-accent focus:ring-2 focus:ring-accent/25;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b94a7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-position: right 0.6rem center;
+    background-size: 1rem;
+  }
+
+  .chip {
+    @apply cursor-pointer rounded-full border border-line bg-panel2/60 px-3 py-1 text-xs text-dim transition;
+    @apply hover:border-accent/40 hover:text-white;
+  }
+
+  .card {
+    @apply rounded-xl border border-line bg-panel/40;
+  }
 }
 
 /* Rendered-markdown styling for the Result panel (no typography plugin needed). */

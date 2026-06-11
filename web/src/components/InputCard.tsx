@@ -33,14 +33,10 @@ export function InputCard({
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
         }}
         placeholder="Your answer…  (⌘/Ctrl + Enter)"
-        className="mb-2.5 min-h-[60px] w-full resize-y rounded-lg border border-line bg-panel px-3 py-2 text-sm outline-none focus:border-accent"
+        className="field mb-2.5 min-h-[60px] w-full resize-y"
       />
-      <button
-        onClick={submit}
-        disabled={!text.trim()}
-        className="rounded-lg bg-accent px-3.5 py-1.5 text-sm font-semibold text-[#0b1020] transition enabled:hover:brightness-110 disabled:opacity-40"
-      >
-        Send ▶
+      <button onClick={submit} disabled={!text.trim()} className="btn btn-primary">
+        Send <span aria-hidden>▶</span>
       </button>
     </div>
   );

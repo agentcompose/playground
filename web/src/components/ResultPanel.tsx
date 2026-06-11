@@ -11,7 +11,7 @@ function CopyButton({ text }: { text: string }) {
         setDone(true);
         setTimeout(() => setDone(false), 1200);
       }}
-      className="rounded-md border border-line bg-panel2 px-2 py-1 text-[11px] text-dim transition hover:text-white"
+      className="btn btn-ghost btn-sm"
     >
       {done ? "✓ copied" : "copy"}
     </button>
@@ -29,7 +29,7 @@ function DownloadButton({ text }: { text: string }) {
         a.click();
         URL.revokeObjectURL(url);
       }}
-      className="rounded-md border border-line bg-panel2 px-2 py-1 text-[11px] text-dim transition hover:text-white"
+      className="btn btn-ghost btn-sm"
     >
       ↓ .md
     </button>

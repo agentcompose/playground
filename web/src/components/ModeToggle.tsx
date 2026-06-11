@@ -19,8 +19,8 @@ export function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode)
             onClick={() => onChange(o.id)}
             title={o.hint}
             className={
-              "rounded-lg px-3.5 py-1.5 text-[13px] font-medium transition " +
-              (active ? "bg-accent text-[#0b1020]" : "text-dim hover:text-white")
+              "cursor-pointer rounded-lg px-3.5 py-1.5 text-[13px] font-medium transition " +
+              (active ? "bg-accent text-[#0b1020] shadow-sm shadow-accent/20" : "text-dim hover:text-white")
             }
           >
             {o.label}

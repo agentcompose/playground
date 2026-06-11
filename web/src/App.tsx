@@ -78,16 +78,10 @@ export function App() {
         onRun={run.run}
       />
 
-      <AgentRoster
-        agents={agents}
-        search={cfg?.search}
-        selectable={mode === "agent"}
-        selected={selectedAgent}
-        onSelect={selectAgent}
-      />
+      {mode === "engine" && <AgentRoster agents={agents} search={cfg?.search} />}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-line bg-panel/40">
+        <section className="card">
           <h2 className="border-b border-line px-4 py-2.5 text-xs uppercase tracking-wide text-dim">
             {mode === "engine" ? "Plan & steps" : "Run"}
           </h2>
@@ -107,7 +101,7 @@ export function App() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-line bg-panel/40">
+        <section className="card">
           <h2 className="border-b border-line px-4 py-2.5 text-xs uppercase tracking-wide text-dim">Result</h2>
           <div className="max-h-[58vh] overflow-auto p-4">
             <ResultPanel parts={run.resultParts} error={run.error} />

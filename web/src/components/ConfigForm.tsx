@@ -79,7 +79,7 @@ export function ConfigForm({
               <select
                 value={String(value[key] ?? prop.default ?? "")}
                 onChange={(e) => set(key, e.target.value)}
-                className="rounded-lg border border-line bg-panel px-2.5 py-1.5 text-sm outline-none focus:border-accent"
+                className="select"
               >
                 {prop.enum.map((o) => (
                   <option key={String(o)} value={String(o)}>{String(o)}</option>
@@ -99,7 +99,7 @@ export function ConfigForm({
               min={prop.minimum}
               max={prop.maximum}
               onChange={(e) => set(key, isNum ? (e.target.value === "" ? undefined : Number(e.target.value)) : e.target.value)}
-              className="rounded-lg border border-line bg-panel px-2.5 py-1.5 text-sm outline-none focus:border-accent"
+              className="field"
             />
           </label>
         );

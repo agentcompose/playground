@@ -17,17 +17,11 @@ export function ApprovalCard({
         continue, deny to fail the run.
       </p>
       <div className="flex gap-2">
-        <button
-          onClick={() => onDecide(true)}
-          className="rounded-lg bg-ok px-3.5 py-1.5 text-sm font-semibold text-[#06210f] hover:brightness-110"
-        >
-          Approve ✓
+        <button onClick={() => onDecide(true)} className="btn btn-ok">
+          Approve <span aria-hidden>✓</span>
         </button>
-        <button
-          onClick={() => onDecide(false)}
-          className="rounded-lg border border-err px-3.5 py-1.5 text-sm font-semibold text-err hover:bg-err/10"
-        >
-          Deny ✕
+        <button onClick={() => onDecide(false)} className="btn btn-danger">
+          Deny <span aria-hidden>✕</span>
         </button>
       </div>
     </div>
