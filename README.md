@@ -171,6 +171,10 @@ playground/
   engine's persistence adapter (a separate, tracked engine item).
 - **One governance policy** (approve `coding`). The governor seam supports arbitrary
   policies; the UI just exposes a single toggle for now.
+- **Artifacts are observable, not forwarded.** The engine feeds a step's `result.parts`
+  to downstream steps; `artifacts` are surfaced in the trace/UI but not handed onward
+  (per spec §5). To pass a file to a later agent, return it as a file `Part`. No consumer
+  needs artifact-forwarding today (the build step is terminal).
 
 ## License
 
