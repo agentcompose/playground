@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { sendControl, sendInput, startRun } from "../api.ts";
+import { sendControl, sendInput, startRun, type RunRequest } from "../api.ts";
 import {
   type EngineEvent,
   type Part,
@@ -24,7 +24,7 @@ interface RunState {
   pending?: { stepId: string; agent: string };
   inputAsk?: InputAsk;
   log: EngineEvent[];
-  run: (goal: string, govern: boolean, clarify: boolean) => Promise<void>;
+  run: (req: RunRequest) => Promise<void>;
   approve: (ok: boolean) => Promise<void>;
   answer: (text: string) => Promise<void>;
   reset: () => void;
@@ -151,10 +151,10 @@ export function useRun(): RunState {
   }, [closeStream]);
 
   const run = useCallback(
-    async (goal: string, govern: boolean, clarify: boolean) => {
+    async (req: RunRequest) => {
       reset();
       setStatus("running");
-      const runId = await startRun(goal, govern, clarify);
+      const runId = await startRun(req);
       runIdRef.current = runId;
       openStream(runId);
     },

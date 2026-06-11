@@ -1,15 +1,41 @@
 # AgentCompose Playground
 
-A **web playground** for driving the [AgentCompose engine](https://github.com/agentcompose/engine)
-with a **real model** and **real agents** — a polished **React** front end over a
-**zero-dependency Node backend**. It is two things at once:
+A **web playground** for exercising the [AgentCompose](https://github.com/agentcompose)
+contract at **two altitudes**, with a **real model** and **real agents** — a polished
+**React** front end over a **zero-dependency Node backend**. It is two things at once:
 
-1. **The long-life testing harness** — type goals, watch the engine plan → delegate →
-   stream, approve/deny governed steps (HITL), and judge whether the orchestration is
-   actually valuable.
+1. **The long-life testing harness** — drive either the master engine or a single
+   worker, watch it plan → delegate → stream, approve/deny governed steps (HITL), and
+   judge whether the orchestration (and each component) is actually valuable.
 2. **The seed of product layer ④** — the first concrete UI on top of the headless
-   engine, and the first external consumer that exercises `@agentcompose/engine`'s
-   public package surface.
+   engine *and* the SDK substrate, and the first external consumer that exercises both
+   public package surfaces.
+
+## Two modes (one contract)
+
+Because every AgentCompose agent shares the same interaction surface
+(`describe / configure / submit / events`), a **master** and a **worker** are the same
+kind of thing. The playground makes that tangible with a mode toggle:
+
+| Mode | What it drives | How |
+|------|----------------|-----|
+| **Engine** (master) | the `Engine`: a goal is planned and delegated across the registry | `dynamicPlanner` + governor over the `decide` port |
+| **Single agent** | one selected worker, directly | `AgentClient.configure()` → `submit()` → `events()`, bypassing the planner |
+
+Both modes share the **same event stream and result UI** — single-agent `TaskEvent`s are
+normalized server-side into the engine's `EngineEvent` vocabulary (a synthetic one-step
+run), so the timeline, result panel, and event log work identically. In single-agent
+mode you also get a **config form rendered from the agent's `configSchema`** — the
+spec's "configurable component" claim made tangible (e.g. flip research's `clarify` knob
+to trigger the input-required HITL standalone).
+
+## Dynamic agent catalog
+
+The registry is built from **one declarative catalog** ([`server/catalog.ts`](server/catalog.ts)):
+each entry pairs a stable `name` with an `AgentDefinition`. Both the engine registries
+and single-agent mode are derived from it, and the UI dropdown + roster are generated
+from `/config`. **Adding an agent is a one-line change** in the catalog (plus a
+dependency) — no edits to `server.ts` or the UI.
 
 > **On dependencies:** the *engine core* stays dependency-free by design. This is the
 > *product* layer, so it uses a real stack — **Vite + React + TypeScript + Tailwind**
@@ -94,12 +120,14 @@ graph LR
 ```
 playground/
   server/          zero-dep Node backend (http + SSE)
-    server.ts      engine wiring + REST/SSE endpoints
+    server.ts      engine wiring + single-agent runner + REST/SSE endpoints
+    catalog.ts     declarative agent catalog (single source of truth)
     agents.ts      real fetch + writer agents (SDK)
   web/             Vite + React + TypeScript + Tailwind front end
     src/
-      hooks/useRun.ts     SSE stream → React state
-      components/         Composer, StepTimeline, ApprovalCard, ResultPanel, EventLog
+      hooks/useRun.ts     SSE stream → React state (mode-agnostic)
+      components/         ModeToggle, Composer, ConfigForm, AgentRoster,
+                          StepTimeline, ApprovalCard, ResultPanel, EventLog
 ```
 
 ## Known limitations (honest, deferred)

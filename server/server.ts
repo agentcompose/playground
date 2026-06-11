@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import { inProcess } from "@agentcompose/sdk";
+import type { AgentClient, AgentConfig, TaskEvent } from "@agentcompose/sdk";
 import {
   Engine,
   AgentRegistry,
@@ -23,8 +24,7 @@ import {
 import { openAICompatibleDecider } from "@agentcompose/engine/adapters/openai";
 import type { EngineEvent } from "@agentcompose/engine";
 
-import { fetchAgent, makeWriter } from "./agents.ts";
-import { makeResearchAgent, tavily } from "@agentcompose/research-agent";
+import { buildCatalog } from "./catalog.ts";
 
 const PORT = Number(process.env.PORT ?? 5173);
 const baseUrl = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
@@ -35,33 +35,33 @@ if (!apiKey) {
   process.exit(1);
 }
 
+// ── Catalog → clients ─────────────────────────────────────────────────────────
+// One declarative catalog (server/catalog.ts) is the single source of truth for which
+// agents exist. Both the engine (master) registries and single-agent test mode are
+// derived from it, so adding an agent is a one-line change in the catalog.
+const tavilyKey = process.env.TAVILY_API_KEY;
+const catalog = buildCatalog({ baseUrl, model, tavilyKey });
+// One in-process client per agent, shared by the engine registries.
+const clients = new Map<string, AgentClient>(catalog.map((e) => [e.name, inProcess(e.def)]));
+function agentDef(name: string) {
+  return catalog.find((e) => e.name === name)?.def;
+}
+
 // ── Engine wiring ───────────────────────────────────────────────────────────
-// One registry of real agents; one decider (the brain); a shared checkpoint store
-// so the governed engine can resume a suspended run. Two engines differ only by
-// governor so the UI can toggle HITL on/off.
+// One decider (the brain); a shared checkpoint store so the governed engine can resume
+// a suspended run. Engines differ only by governor (HITL) and research's `clarify`.
 //
 // `research` is a dedicated, independently-published worker (@agentcompose/research-agent)
 // — a leaf the master delegates to. It uses Tavily when TAVILY_API_KEY is set, otherwise
-// an offline fixture, so it runs keyless. Modest defaults keep the demo snappy.
-const tavilyKey = process.env.TAVILY_API_KEY;
-const researchClient = inProcess(
-  makeResearchAgent({
-    defaults: { baseUrl, model, angles: 3, maxSourcesPerAngle: 4, maxIterationsPerAngle: 1 },
-    ...(tavilyKey ? { search: tavily({ apiKey: tavilyKey }) } : {}),
-  }),
-);
-// Two registries differ only in research's base config: `clarify` makes the research
-// worker escalate one scoping question via the spec's input-required state — the
-// tangible *worker-escalation* HITL demo (distinct from the governor-approval gate).
-const plainRegistry = new AgentRegistry({
-  fetch: inProcess(fetchAgent),
-  writer: inProcess(makeWriter({ baseUrl, model })),
-  research: researchClient,
-});
+// an offline fixture, so it runs keyless.
+const registryEntries = Object.fromEntries(catalog.map((e) => [e.name, clients.get(e.name)!]));
+const plainRegistry = new AgentRegistry(registryEntries);
+// `clarify` makes the research worker escalate one scoping question via the spec's
+// input-required state — the tangible *worker-escalation* HITL demo (distinct from the
+// governor-approval gate). Only research is overlaid; the rest reuse their clients.
 const clarifyRegistry = new AgentRegistry({
-  fetch: inProcess(fetchAgent),
-  writer: inProcess(makeWriter({ baseUrl, model })),
-  research: { client: researchClient, config: { clarify: true } },
+  ...registryEntries,
+  research: { client: clients.get("research")!, config: { clarify: true } },
 });
 const decider = openAICompatibleDecider({ baseUrl, apiKey, model });
 // The planner only *enumerates* agents (same roster in both registries), so one planner
@@ -87,26 +87,48 @@ function engineFor(govern: boolean, clarify: boolean): Engine {
   return e;
 }
 
-// ── Agent roster (for the UI to show what the master can delegate to) ─────────
+// ── Agent roster (drives the UI's read-only registry + the single-agent dropdown) ───
 async function roster(): Promise<
-  { name: string; title: string; description?: string; capabilities: string[] }[]
+  {
+    name: string;
+    id: string;
+    title: string;
+    description?: string;
+    capabilities: string[];
+    configSchema?: Record<string, unknown>;
+  }[]
 > {
   return Promise.all(
     plainRegistry.names().map(async (name) => {
       const d = await plainRegistry.describe(name);
       return {
         name,
+        id: d.id,
         title: d.name,
         description: d.description,
         capabilities: (d.capabilities ?? []).map((c) => c.id),
+        configSchema: d.configSchema,
       };
     }),
   );
 }
 
 // ── Per-run SSE plumbing ─────────────────────────────────────────────────────
-const pending = new Map<string, { goal: string; govern: boolean; clarify: boolean }>();
+type Mode = "engine" | "agent";
+interface PendingRun {
+  mode: Mode;
+  goal: string;
+  // engine mode
+  govern: boolean;
+  clarify: boolean;
+  // agent mode
+  agent?: string;
+  config?: AgentConfig;
+}
+const pending = new Map<string, PendingRun>();
 const conns = new Map<string, http.ServerResponse>();
+// Live single-agent runs, so /input can route a human answer back to the worker.
+const agentRuns = new Map<string, { client: AgentClient; taskId: string }>();
 
 function sse(runId: string, ev: unknown): void {
   conns.get(runId)?.write(`data: ${JSON.stringify(ev)}\n\n`);
@@ -134,6 +156,74 @@ async function drive(runId: string, gen: AsyncGenerator<EngineEvent>): Promise<v
   } catch (err) {
     sse(runId, { type: "error", error: { code: -32603, message: (err as Error)?.message ?? String(err) } });
     end(runId);
+  }
+}
+
+/** Single-agent mode: drive ONE agent directly through the uniform AgentClient surface
+ *  (configure → submit → events), bypassing the engine/planner. The agent's TaskEvents are
+ *  normalized into the SAME EngineEvent shape the UI already renders — the whole run is a
+ *  single synthetic step named after the agent. Because the contract is uniform, a master
+ *  published via asAgent() could be driven here too. */
+async function driveAgent(runId: string, agent: string, goal: string, config: AgentConfig): Promise<void> {
+  const def = agentDef(agent);
+  if (!def) {
+    sse(runId, { type: "error", error: { code: -32602, message: `Unknown agent: ${agent}` } });
+    return end(runId);
+  }
+  const client = inProcess(def); // fresh client so per-run config can't race a shared one
+  const step = agent;
+  try {
+    await client.configure(config ?? {});
+    const task = await client.submit([{ kind: "text", text: goal }]);
+    agentRuns.set(runId, { client, taskId: task.id });
+    sse(runId, { type: "run-started", runId });
+    sse(runId, { type: "plan", steps: [{ id: step, agent }] });
+    sse(runId, { type: "step-started", stepId: step, agent });
+    for await (const ev of client.events(task.id)) {
+      for (const out of normalizeAgentEvent(step, agent, ev)) sse(runId, out);
+      if (ev.type === "result" || ev.type === "error") break;
+    }
+    end(runId);
+  } catch (err) {
+    sse(runId, { type: "error", error: { code: -32603, message: (err as Error)?.message ?? String(err) } });
+    end(runId);
+  } finally {
+    agentRuns.delete(runId);
+    void client.close().catch(() => {});
+  }
+}
+
+/** Map one SDK TaskEvent onto the engine's EngineEvent vocabulary (synthetic single step). */
+function normalizeAgentEvent(step: string, agent: string, ev: TaskEvent): EngineEvent[] {
+  switch (ev.type) {
+    case "progress":
+      return [{ type: "progress", stepId: step, percent: ev.percent, message: ev.message }];
+    case "message":
+      return [{ type: "message", stepId: step, delta: ev.delta }];
+    case "artifact":
+      return [{ type: "artifact", stepId: step, artifact: ev.artifact }];
+    case "status":
+      // The only status that needs UI action is a worker escalation (input-required).
+      if (ev.state === "input-required")
+        return [
+          {
+            type: "suspended",
+            reason: { kind: "input", address: { stepId: step, askIndex: 0 }, prompt: ev.prompt },
+          },
+        ];
+      return [];
+    case "result":
+      return [
+        { type: "step-completed", stepId: step, parts: ev.result.parts },
+        { type: "result", parts: ev.result.parts },
+      ];
+    case "error":
+      return [
+        { type: "step-failed", stepId: step, error: ev.error },
+        { type: "error", error: ev.error },
+      ];
+    default:
+      return [];
   }
 }
 
@@ -191,13 +281,27 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
 
   if (req.method === "GET" && url.pathname === "/config") {
-    return json(res, { model, baseUrl, search: tavilyKey ? "tavily" : "fixture", agents: await roster() });
+    return json(res, {
+      model,
+      baseUrl,
+      search: tavilyKey ? "tavily" : "fixture",
+      modes: ["engine", "agent"],
+      agents: await roster(),
+    });
   }
 
   if (req.method === "POST" && url.pathname === "/run") {
     const body = await readJson(req);
     const runId = "run_" + randomUUID().slice(0, 12);
-    pending.set(runId, { goal: String(body.goal ?? ""), govern: !!body.govern, clarify: !!body.clarify });
+    const mode: Mode = body.mode === "agent" ? "agent" : "engine";
+    pending.set(runId, {
+      mode,
+      goal: String(body.goal ?? ""),
+      govern: !!body.govern,
+      clarify: !!body.clarify,
+      agent: body.agent ? String(body.agent) : undefined,
+      config: (body.config as AgentConfig) ?? {},
+    });
     return json(res, { runId });
   }
 
@@ -212,7 +316,11 @@ const server = http.createServer(async (req, res) => {
     });
     conns.set(runId, res);
     req.on("close", () => conns.delete(runId));
-    void drive(runId, engineFor(p.govern, p.clarify).run([{ kind: "text", text: p.goal }], { runId }));
+    if (p.mode === "agent") {
+      void driveAgent(runId, p.agent ?? "", p.goal, p.config ?? {});
+    } else {
+      void drive(runId, engineFor(p.govern, p.clarify).run([{ kind: "text", text: p.goal }], { runId }));
+    }
     return;
   }
 
@@ -228,6 +336,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Route a human answer down to a worker that escalated (input-required). Tier-1 HITL.
+  // Works in both modes: engine mode re-drives via the engine; agent mode forwards the
+  // answer straight to the worker through the same task it suspended on.
   if (req.method === "POST" && url.pathname === "/input") {
     const body = await readJson(req);
     const runId = String(body.runId ?? "");
@@ -237,7 +347,17 @@ const server = http.createServer(async (req, res) => {
     if (!p || !conns.has(runId)) return json(res, { error: "no open run" }, 409);
     json(res, { ok: true });
     const parts = [{ kind: "text" as const, text: String(body.text ?? "") }];
-    void drive(runId, engineFor(p.govern, p.clarify).provideInput(runId, parts, { stepId, askIndex }));
+    const live = agentRuns.get(runId);
+    if (p.mode === "agent" && live) {
+      // The agent's events() loop in driveAgent is still subscribed and will pick up the
+      // resumed events; we just feed the answer in.
+      void live.client.provideInput(live.taskId, parts).catch((err) => {
+        sse(runId, { type: "error", error: { code: -32603, message: (err as Error)?.message ?? String(err) } });
+        end(runId);
+      });
+    } else {
+      void drive(runId, engineFor(p.govern, p.clarify).provideInput(runId, parts, { stepId, askIndex }));
+    }
     return;
   }
 
