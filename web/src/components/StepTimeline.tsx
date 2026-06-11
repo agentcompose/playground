@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { type StepView } from "../types.ts";
+import { type Artifact, type StepView, partsToText } from "../types.ts";
 
 const BADGE: Record<StepView["state"], string> = {
   pending: "bg-panel2 text-dim",
@@ -14,18 +14,54 @@ const BORDER: Record<StepView["state"], string> = {
   failed: "border-err/50",
 };
 
+function fmtDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)}s`;
+  return `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`;
+}
+
+function ArtifactCard({ artifact }: { artifact: Artifact }) {
+  const [open, setOpen] = useState(true);
+  const text = partsToText(artifact.parts);
+  return (
+    <div className="rounded-md border border-line bg-bg/60">
+      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left">
+        <span aria-hidden className="text-dim">{open ? "▾" : "▸"}</span>
+        <span className="text-[11px] text-accent">📎 {artifact.name ?? artifact.id}</span>
+        <span className="ml-auto text-[10px] text-dim">{text.length} chars</span>
+      </button>
+      {open && (
+        <pre className="max-h-72 overflow-auto whitespace-pre-wrap border-t border-line px-2.5 py-2 font-mono text-[11.5px] text-[#cbd2e0]">
+          {text}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 function StepCard({ step }: { step: StepView }) {
   const [open, setOpen] = useState(false);
   const body = step.output ?? step.messages;
+  const artifacts = step.artifacts ?? [];
   return (
     <div className={`rounded-lg border ${BORDER[step.state]} bg-panel p-3`}>
       <div className="flex items-center gap-2">
         <span className="font-mono text-xs text-accent">{step.id}</span>
         <span className="text-xs text-dim">→ {step.agent}</span>
+        {step.durationMs != null && (
+          <span className="font-mono text-[10px] text-dim">{fmtDuration(step.durationMs)}</span>
+        )}
         <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] ${BADGE[step.state]}`}>{step.state}</span>
       </div>
       {step.progress && <div className="mt-1.5 text-xs text-dim">{step.progress}</div>}
       {step.error && <div className="mt-1.5 text-xs text-err">{step.error}</div>}
+      {artifacts.length > 0 && (
+        <div className="mt-2 space-y-1.5">
+          {artifacts.map((a) => (
+            <ArtifactCard key={a.id} artifact={a} />
+          ))}
+        </div>
+      )}
       {body && (
         <div className="mt-2">
           <button onClick={() => setOpen((o) => !o)} className="text-[11px] text-dim hover:text-white">

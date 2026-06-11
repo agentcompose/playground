@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { sendControl, sendInput, startRun, type RunRequest } from "../api.ts";
+import { sendCancel, sendControl, sendInput, startRun, type RunRequest } from "../api.ts";
 import {
   type EngineEvent,
   type Part,
@@ -24,9 +24,12 @@ interface RunState {
   pending?: { stepId: string; agent: string };
   inputAsk?: InputAsk;
   log: EngineEvent[];
+  startedAt?: number;
+  endedAt?: number;
   run: (req: RunRequest) => Promise<void>;
   approve: (ok: boolean) => Promise<void>;
   answer: (text: string) => Promise<void>;
+  cancel: () => Promise<void>;
   reset: () => void;
 }
 
@@ -38,6 +41,8 @@ export function useRun(): RunState {
   const [pending, setPending] = useState<{ stepId: string; agent: string }>();
   const [inputAsk, setInputAsk] = useState<InputAsk>();
   const [log, setLog] = useState<EngineEvent[]>([]);
+  const [startedAt, setStartedAt] = useState<number>();
+  const [endedAt, setEndedAt] = useState<number>();
 
   const runIdRef = useRef<string>("");
   const esRef = useRef<EventSource | null>(null);
@@ -68,7 +73,7 @@ export function useRun(): RunState {
           ev.steps.forEach((s) => upsert(s.id, { agent: s.agent, state: "pending" as StepState }));
           break;
         case "step-started":
-          upsert(ev.stepId, { agent: ev.agent, state: "running" });
+          upsert(ev.stepId, { agent: ev.agent, state: "running", startedAt: Date.now() });
           break;
         case "progress":
           upsert(ev.stepId, {
@@ -82,9 +87,20 @@ export function useRun(): RunState {
           upsert(ev.stepId, { messages: (cur?.messages ?? "") + add });
           break;
         }
-        case "step-completed":
-          upsert(ev.stepId, { state: "done", output: partsToText(ev.parts) });
+        case "step-completed": {
+          const cur = stepsRef.current.get(ev.stepId);
+          upsert(ev.stepId, {
+            state: "done",
+            output: partsToText(ev.parts),
+            durationMs: cur?.startedAt ? Date.now() - cur.startedAt : undefined,
+          });
           break;
+        }
+        case "artifact": {
+          const cur = stepsRef.current.get(ev.stepId);
+          upsert(ev.stepId, { artifacts: [...(cur?.artifacts ?? []), ev.artifact] });
+          break;
+        }
         case "step-retry":
           upsert(ev.stepId, {
             state: "running",
@@ -94,9 +110,15 @@ export function useRun(): RunState {
         case "step-fallback":
           upsert(ev.stepId, { agent: ev.to, state: "running", progress: `fallback: ${ev.from} → ${ev.to}` });
           break;
-        case "step-failed":
-          upsert(ev.stepId, { state: "failed", error: ev.error.message });
+        case "step-failed": {
+          const cur = stepsRef.current.get(ev.stepId);
+          upsert(ev.stepId, {
+            state: "failed",
+            error: ev.error.message,
+            durationMs: cur?.startedAt ? Date.now() - cur.startedAt : undefined,
+          });
           break;
+        }
         case "suspended": {
           if (ev.reason.kind === "input") {
             const { stepId, askIndex } = ev.reason.address;
@@ -112,15 +134,18 @@ export function useRun(): RunState {
         case "result":
           setResultParts(ev.parts);
           setStatus("completed");
+          setEndedAt(Date.now());
           closeStream();
           break;
         case "error":
           setError(ev.error.message);
           setStatus("failed");
+          setEndedAt(Date.now());
           closeStream();
           break;
         case "canceled":
           setStatus("canceled");
+          setEndedAt(Date.now());
           closeStream();
           break;
       }
@@ -147,6 +172,8 @@ export function useRun(): RunState {
     setPending(undefined);
     setInputAsk(undefined);
     setLog([]);
+    setStartedAt(undefined);
+    setEndedAt(undefined);
     setStatus("idle");
   }, [closeStream]);
 
@@ -154,6 +181,7 @@ export function useRun(): RunState {
     async (req: RunRequest) => {
       reset();
       setStatus("running");
+      setStartedAt(Date.now());
       const runId = await startRun(req);
       runIdRef.current = runId;
       openStream(runId);
@@ -183,5 +211,12 @@ export function useRun(): RunState {
     [inputAsk],
   );
 
-  return { status, steps, resultParts, error, pending, inputAsk, log, run, approve, answer, reset };
+  const cancel = useCallback(async () => {
+    if (!runIdRef.current) return;
+    setPending(undefined);
+    setInputAsk(undefined);
+    await sendCancel(runIdRef.current);
+  }, []);
+
+  return { status, steps, resultParts, error, pending, inputAsk, log, startedAt, endedAt, run, approve, answer, cancel, reset };
 }

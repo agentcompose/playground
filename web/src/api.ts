@@ -78,3 +78,11 @@ export async function sendInput(
     body: JSON.stringify({ runId, stepId, askIndex, text }),
   });
 }
+
+export async function sendCancel(runId: string): Promise<void> {
+  await fetch("/cancel", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ runId }),
+  });
+}

@@ -129,6 +129,8 @@ const pending = new Map<string, PendingRun>();
 const conns = new Map<string, http.ServerResponse>();
 // Live single-agent runs, so /input can route a human answer back to the worker.
 const agentRuns = new Map<string, { client: AgentClient; taskId: string }>();
+// One AbortController per run so /cancel can abort in-flight engine work (and model calls).
+const aborts = new Map<string, AbortController>();
 
 function sse(runId: string, ev: unknown): void {
   conns.get(runId)?.write(`data: ${JSON.stringify(ev)}\n\n`);
@@ -141,6 +143,7 @@ function end(runId: string): void {
   }
   conns.delete(runId);
   pending.delete(runId);
+  aborts.delete(runId);
 }
 
 /** Drain an engine event stream into the run's SSE connection. On `suspended` we
@@ -182,6 +185,7 @@ async function driveAgent(runId: string, agent: string, goal: string, config: Ag
     for await (const ev of client.events(task.id)) {
       for (const out of normalizeAgentEvent(step, agent, ev)) sse(runId, out);
       if (ev.type === "result" || ev.type === "error") break;
+      if (ev.type === "status" && ev.state === "canceled") break;
     }
     end(runId);
   } catch (err) {
@@ -203,7 +207,7 @@ function normalizeAgentEvent(step: string, agent: string, ev: TaskEvent): Engine
     case "artifact":
       return [{ type: "artifact", stepId: step, artifact: ev.artifact }];
     case "status":
-      // The only status that needs UI action is a worker escalation (input-required).
+      // input-required → suspend for an answer; canceled → terminal canceled event.
       if (ev.state === "input-required")
         return [
           {
@@ -211,6 +215,7 @@ function normalizeAgentEvent(step: string, agent: string, ev: TaskEvent): Engine
             reason: { kind: "input", address: { stepId: step, askIndex: 0 }, prompt: ev.prompt },
           },
         ];
+      if (ev.state === "canceled") return [{ type: "canceled" }];
       return [];
     case "result":
       return [
@@ -316,11 +321,29 @@ const server = http.createServer(async (req, res) => {
     });
     conns.set(runId, res);
     req.on("close", () => conns.delete(runId));
+    const ac = new AbortController();
+    aborts.set(runId, ac);
     if (p.mode === "agent") {
       void driveAgent(runId, p.agent ?? "", p.goal, p.config ?? {});
     } else {
-      void drive(runId, engineFor(p.govern, p.clarify).run([{ kind: "text", text: p.goal }], { runId }));
+      void drive(runId, engineFor(p.govern, p.clarify).run([{ kind: "text", text: p.goal }], { runId, signal: ac.signal }));
     }
+    return;
+  }
+
+  // Cancel a run mid-flight, from any state (running or suspended). Aborts in-flight
+  // engine/model work, cancels the worker task in agent mode, and resolves the UI to
+  // 'canceled' immediately.
+  if (req.method === "POST" && url.pathname === "/cancel") {
+    const body = await readJson(req);
+    const runId = String(body.runId ?? "");
+    if (!conns.has(runId)) return json(res, { error: "no open run" }, 409);
+    json(res, { ok: true });
+    const live = agentRuns.get(runId);
+    if (live) void live.client.cancel(live.taskId).catch(() => {});
+    aborts.get(runId)?.abort();
+    sse(runId, { type: "canceled" });
+    end(runId);
     return;
   }
 
@@ -331,7 +354,8 @@ const server = http.createServer(async (req, res) => {
     const p = pending.get(runId);
     if (!p || !conns.has(runId)) return json(res, { error: "no open run" }, 409);
     json(res, { ok: true });
-    void drive(runId, engineFor(p.govern, p.clarify).resume(runId, { approvals: { [stepId]: !!body.approve } }));
+    const signal = aborts.get(runId)?.signal;
+    void drive(runId, engineFor(p.govern, p.clarify).resume(runId, { approvals: { [stepId]: !!body.approve }, signal }));
     return;
   }
 
@@ -356,7 +380,8 @@ const server = http.createServer(async (req, res) => {
         end(runId);
       });
     } else {
-      void drive(runId, engineFor(p.govern, p.clarify).provideInput(runId, parts, { stepId, askIndex }));
+      const signal = aborts.get(runId)?.signal;
+      void drive(runId, engineFor(p.govern, p.clarify).provideInput(runId, parts, { stepId, askIndex }, { signal }));
     }
     return;
   }

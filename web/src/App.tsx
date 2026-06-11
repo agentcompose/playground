@@ -11,6 +11,7 @@ import { ResultPanel } from "./components/ResultPanel.tsx";
 import { AgentRoster } from "./components/AgentRoster.tsx";
 import { EventLog } from "./components/EventLog.tsx";
 import { StatusBadge } from "./components/StatusBadge.tsx";
+import { Elapsed } from "./components/Elapsed.tsx";
 
 export function App() {
   const run = useRun();
@@ -49,6 +50,12 @@ export function App() {
         <span className="font-mono text-xs text-dim">{cfg ? `${cfg.model} · ${cfg.baseUrl}` : "…"}</span>
         <div className="ml-auto flex items-center gap-3">
           <ModeToggle mode={mode} onChange={switchMode} />
+          <Elapsed startedAt={run.startedAt} endedAt={run.endedAt} />
+          {busy && (
+            <button onClick={run.cancel} className="btn btn-danger btn-sm">
+              Stop <span aria-hidden>■</span>
+            </button>
+          )}
           <StatusBadge status={run.status} />
         </div>
       </header>

@@ -48,6 +48,9 @@ export interface StepView {
   messages: string;
   output?: string;
   error?: string;
+  artifacts?: Artifact[];
+  startedAt?: number;
+  durationMs?: number;
 }
 
 export type RunStatus =

@@ -11,6 +11,7 @@
 import type { AgentDefinition } from "@agentcompose/sdk";
 import { fetchAgent, makeWriter } from "./agents.ts";
 import { makeResearchAgent, tavily } from "@agentcompose/research-agent";
+import { makeCodingAgent } from "@agentcompose/coding-agent";
 
 export interface CatalogEntry {
   /** Registry key + dropdown id (stable, lowercase). */
@@ -38,7 +39,8 @@ export function buildCatalog(env: CatalogEnv): CatalogEntry[] {
         ...(tavilyKey ? { search: tavily({ apiKey: tavilyKey }) } : {}),
       }),
     },
-    // To add the coding worker: `npm i @agentcompose/coding-agent`, then append:
-    //   { name: "coding", def: makeCodingAgent({ defaults: { baseUrl, model } }) },
+    // Coding worker (@agentcompose/coding-agent): wraps pi, runs in a disposable temp
+    // workspace per run, returns a summary + diffs. Drives the same OpenAI gateway.
+    { name: "coding", def: makeCodingAgent({ defaults: { baseUrl, model } }) },
   ];
 }
