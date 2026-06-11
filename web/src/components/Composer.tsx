@@ -92,6 +92,7 @@ export function Composer({
   const [goal, setGoal] = useState("");
   const [govern, setGovern] = useState(true);
   const [clarify, setClarify] = useState(false);
+  const [configOpen, setConfigOpen] = useState(true);
 
   const agent = agents.find((a) => a.name === selectedAgent);
   const canRun = !busy && goal.trim() !== "" && (mode === "engine" || !!selectedAgent);
@@ -150,13 +151,19 @@ export function Composer({
           </button>
           {mode === "engine" && (
             <>
-              <label className="flex cursor-pointer items-center gap-2 px-1 text-[13px] text-dim select-none">
+              <label
+                title="Engine policy (not the model): suspend before any step that calls the fetch agent and ask you to approve or deny. This is the governor / HITL gate."
+                className="flex cursor-pointer items-center gap-2 px-1 text-[13px] text-dim select-none"
+              >
                 <input type="checkbox" checked={govern} onChange={(e) => setGovern(e.target.checked)} />
-                Govern fetch (HITL)
+                Govern fetch
               </label>
-              <label className="flex cursor-pointer items-center gap-2 px-1 text-[13px] text-dim select-none">
+              <label
+                title="Agent behavior: tell the research worker to ask you one scoping question before it starts (via the input-required state). The agent decides to escalate; you answer."
+                className="flex cursor-pointer items-center gap-2 px-1 text-[13px] text-dim select-none"
+              >
                 <input type="checkbox" checked={clarify} onChange={(e) => setClarify(e.target.checked)} />
-                Clarify research (HITL)
+                Clarify research
               </label>
             </>
           )}
@@ -173,8 +180,22 @@ export function Composer({
 
       {mode === "agent" && agent && (
         <div className="card p-3.5">
-          <div className="mb-2.5 text-xs uppercase tracking-wide text-dim">Configuration</div>
-          <ConfigForm schema={agent.configSchema} value={config} onChange={onConfigChange} />
+          <button
+            onClick={() => setConfigOpen((o) => !o)}
+            className="flex w-full items-baseline gap-2 text-left"
+          >
+            <span aria-hidden className="text-dim">{configOpen ? "▾" : "▸"}</span>
+            <span className="text-xs uppercase tracking-wide text-dim">Configuration</span>
+            <span className="text-[11px] text-dim">
+              the agent's declared knobs — including any human-in-the-loop ones (e.g.{" "}
+              <span className="font-mono">clarify</span>)
+            </span>
+          </button>
+          {configOpen && (
+            <div className="mt-3">
+              <ConfigForm schema={agent.configSchema} value={config} onChange={onConfigChange} />
+            </div>
+          )}
         </div>
       )}
     </div>
