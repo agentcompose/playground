@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { sendControl, startRun } from "../api.ts";
+import { sendControl, sendInput, startRun } from "../api.ts";
 import {
   type EngineEvent,
   type Part,
@@ -9,15 +9,24 @@ import {
   partsToText,
 } from "../types.ts";
 
+interface InputAsk {
+  stepId: string;
+  askIndex: number;
+  agent: string;
+  prompt: string;
+}
+
 interface RunState {
   status: RunStatus;
   steps: StepView[];
   resultParts?: Part[];
   error?: string;
   pending?: { stepId: string; agent: string };
+  inputAsk?: InputAsk;
   log: EngineEvent[];
-  run: (goal: string, govern: boolean) => Promise<void>;
+  run: (goal: string, govern: boolean, clarify: boolean) => Promise<void>;
   approve: (ok: boolean) => Promise<void>;
+  answer: (text: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -27,6 +36,7 @@ export function useRun(): RunState {
   const [resultParts, setResultParts] = useState<Part[]>();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState<{ stepId: string; agent: string }>();
+  const [inputAsk, setInputAsk] = useState<InputAsk>();
   const [log, setLog] = useState<EngineEvent[]>([]);
 
   const runIdRef = useRef<string>("");
@@ -88,9 +98,15 @@ export function useRun(): RunState {
           upsert(ev.stepId, { state: "failed", error: ev.error.message });
           break;
         case "suspended": {
-          const stepId = ev.reason.stepId;
-          setPending({ stepId, agent: stepsRef.current.get(stepId)?.agent ?? "?" });
-          setStatus("awaiting-approval");
+          if (ev.reason.kind === "input") {
+            const { stepId, askIndex } = ev.reason.address;
+            const prompt = ev.reason.prompt ? partsToText(ev.reason.prompt) : "The agent needs input to continue.";
+            setInputAsk({ stepId, askIndex, agent: stepsRef.current.get(stepId)?.agent ?? "?", prompt });
+            setStatus("awaiting-input");
+          } else {
+            setPending({ stepId: ev.reason.stepId, agent: stepsRef.current.get(ev.reason.stepId)?.agent ?? "?" });
+            setStatus("awaiting-approval");
+          }
           break;
         }
         case "result":
@@ -129,15 +145,16 @@ export function useRun(): RunState {
     setResultParts(undefined);
     setError(undefined);
     setPending(undefined);
+    setInputAsk(undefined);
     setLog([]);
     setStatus("idle");
   }, [closeStream]);
 
   const run = useCallback(
-    async (goal: string, govern: boolean) => {
+    async (goal: string, govern: boolean, clarify: boolean) => {
       reset();
       setStatus("running");
-      const runId = await startRun(goal, govern);
+      const runId = await startRun(goal, govern, clarify);
       runIdRef.current = runId;
       openStream(runId);
     },
@@ -155,5 +172,16 @@ export function useRun(): RunState {
     [pending],
   );
 
-  return { status, steps, resultParts, error, pending, log, run, approve, reset };
+  const answer = useCallback(
+    async (text: string) => {
+      if (!inputAsk) return;
+      setStatus("running");
+      const { stepId, askIndex } = inputAsk;
+      setInputAsk(undefined);
+      await sendInput(runIdRef.current, stepId, askIndex, text);
+    },
+    [inputAsk],
+  );
+
+  return { status, steps, resultParts, error, pending, inputAsk, log, run, approve, answer, reset };
 }

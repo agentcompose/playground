@@ -4,6 +4,7 @@ import { useRun } from "./hooks/useRun.ts";
 import { Composer } from "./components/Composer.tsx";
 import { StepTimeline } from "./components/StepTimeline.tsx";
 import { ApprovalCard } from "./components/ApprovalCard.tsx";
+import { InputCard } from "./components/InputCard.tsx";
 import { ResultPanel } from "./components/ResultPanel.tsx";
 import { AgentRoster } from "./components/AgentRoster.tsx";
 import { EventLog } from "./components/EventLog.tsx";
@@ -17,7 +18,7 @@ export function App() {
     getConfig().then(setCfg).catch(() => setCfg(null));
   }, []);
 
-  const busy = run.status === "running" || run.status === "awaiting-approval";
+  const busy = run.status === "running" || run.status === "awaiting-approval" || run.status === "awaiting-input";
 
   return (
     <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-5 px-5 py-6">
@@ -42,6 +43,14 @@ export function App() {
             {run.pending && (
               <ApprovalCard stepId={run.pending.stepId} agent={run.pending.agent} onDecide={run.approve} />
             )}
+            {run.inputAsk && (
+              <InputCard
+                stepId={run.inputAsk.stepId}
+                agent={run.inputAsk.agent}
+                prompt={run.inputAsk.prompt}
+                onAnswer={run.answer}
+              />
+            )}
             <StepTimeline steps={run.steps} />
           </div>
         </section>
@@ -60,7 +69,9 @@ export function App() {
         Real planner (your model) orchestrating real <span className="font-mono">fetch</span>,{" "}
         <span className="font-mono">writer</span>, and <span className="font-mono">research</span> agents — the
         last is the standalone <span className="font-mono">@agentcompose/research-agent</span> worker. Durability is
-        in-memory — resume works within this process.
+        in-memory — resume works within this process. Two HITL gates: <span className="font-mono">Govern fetch</span>{" "}
+        (governor approval before a step) and <span className="font-mono">Clarify research</span> (a worker escalates a
+        required decision; the run suspends durably and routes your answer back down).
       </footer>
     </div>
   );

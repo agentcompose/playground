@@ -4,6 +4,7 @@ const MAP: Record<RunStatus, { label: string; cls: string }> = {
   idle: { label: "idle", cls: "text-dim" },
   running: { label: "running", cls: "text-accent" },
   "awaiting-approval": { label: "awaiting approval", cls: "text-warn" },
+  "awaiting-input": { label: "awaiting input", cls: "text-accent" },
   completed: { label: "completed", cls: "text-ok" },
   failed: { label: "failed", cls: "text-err" },
   canceled: { label: "canceled", cls: "text-dim" },

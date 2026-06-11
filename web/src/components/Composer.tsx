@@ -28,10 +28,11 @@ export function Composer({
   onRun,
 }: {
   busy: boolean;
-  onRun: (goal: string, govern: boolean) => void;
+  onRun: (goal: string, govern: boolean, clarify: boolean) => void;
 }) {
   const [goal, setGoal] = useState("");
   const [govern, setGovern] = useState(true);
+  const [clarify, setClarify] = useState(false);
 
   return (
     <div className="space-y-3">
@@ -40,7 +41,7 @@ export function Composer({
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !busy && goal.trim()) onRun(goal.trim(), govern);
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !busy && goal.trim()) onRun(goal.trim(), govern, clarify);
           }}
           placeholder="Give the engine a goal…  (⌘/Ctrl + Enter to run)"
           className="flex-1 min-h-[76px] resize-y rounded-xl border border-line bg-panel px-4 py-3 text-sm outline-none focus:border-accent"
@@ -48,7 +49,7 @@ export function Composer({
         <div className="flex w-40 flex-col gap-2">
           <button
             disabled={busy || !goal.trim()}
-            onClick={() => onRun(goal.trim(), govern)}
+            onClick={() => onRun(goal.trim(), govern, clarify)}
             className="rounded-xl bg-accent px-4 py-2.5 font-semibold text-[#0b1020] transition enabled:hover:brightness-110 disabled:opacity-40"
           >
             Run ▶
@@ -56,6 +57,10 @@ export function Composer({
           <label className="flex cursor-pointer items-center gap-2 px-1 text-[13px] text-dim select-none">
             <input type="checkbox" checked={govern} onChange={(e) => setGovern(e.target.checked)} />
             Govern fetch (HITL)
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 px-1 text-[13px] text-dim select-none">
+            <input type="checkbox" checked={clarify} onChange={(e) => setClarify(e.target.checked)} />
+            Clarify research (HITL)
           </label>
         </div>
       </div>

@@ -18,7 +18,9 @@ export interface Artifact {
   createdAt?: string;
 }
 
-export type Pending = { kind: "approval"; stepId: string; proposed?: unknown };
+export type Pending =
+  | { kind: "approval"; stepId: string; proposed?: unknown }
+  | { kind: "input"; address: { stepId: string; askIndex: number }; prompt?: Part[]; proposed?: unknown };
 
 export type EngineEvent =
   | { type: "run-started"; runId: string }
@@ -52,6 +54,7 @@ export type RunStatus =
   | "idle"
   | "running"
   | "awaiting-approval"
+  | "awaiting-input"
   | "completed"
   | "failed"
   | "canceled";

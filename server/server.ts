@@ -44,33 +44,56 @@ if (!apiKey) {
 // — a leaf the master delegates to. It uses Tavily when TAVILY_API_KEY is set, otherwise
 // an offline fixture, so it runs keyless. Modest defaults keep the demo snappy.
 const tavilyKey = process.env.TAVILY_API_KEY;
-const registry = new AgentRegistry({
+const researchClient = inProcess(
+  makeResearchAgent({
+    defaults: { baseUrl, model, angles: 3, maxSourcesPerAngle: 4, maxIterationsPerAngle: 1 },
+    ...(tavilyKey ? { search: tavily({ apiKey: tavilyKey }) } : {}),
+  }),
+);
+// Two registries differ only in research's base config: `clarify` makes the research
+// worker escalate one scoping question via the spec's input-required state — the
+// tangible *worker-escalation* HITL demo (distinct from the governor-approval gate).
+const plainRegistry = new AgentRegistry({
   fetch: inProcess(fetchAgent),
   writer: inProcess(makeWriter({ baseUrl, model })),
-  research: inProcess(
-    makeResearchAgent({
-      defaults: { baseUrl, model, angles: 3, maxSourcesPerAngle: 4, maxIterationsPerAngle: 1 },
-      ...(tavilyKey ? { search: tavily({ apiKey: tavilyKey }) } : {}),
-    }),
-  ),
+  research: researchClient,
+});
+const clarifyRegistry = new AgentRegistry({
+  fetch: inProcess(fetchAgent),
+  writer: inProcess(makeWriter({ baseUrl, model })),
+  research: { client: researchClient, config: { clarify: true } },
 });
 const decider = openAICompatibleDecider({ baseUrl, apiKey, model });
-const planner = dynamicPlanner({ decider, registry, maxRounds: 8 });
+// The planner only *enumerates* agents (same roster in both registries), so one planner
+// serves all engines; execution uses the engine's own registry (plain or clarify).
+const planner = dynamicPlanner({ decider, registry: plainRegistry, maxRounds: 8 });
 const checkpoints = new InMemoryCheckpointStore();
 
-const engines = {
-  open: new Engine({ registry, planner, checkpoints }),
-  // Require human approval before any `fetch` step — the tangible HITL demo.
-  governed: new Engine({ registry, planner, governor: approveWhen((s) => s.agent === "fetch"), checkpoints }),
-};
+// Engines are a 2×2 of (govern fetch) × (clarify research), memoized and sharing one
+// checkpoint store so any can resume/route-input into a suspended run.
+const engineCache = new Map<string, Engine>();
+function engineFor(govern: boolean, clarify: boolean): Engine {
+  const key = `${govern}:${clarify}`;
+  let e = engineCache.get(key);
+  if (!e) {
+    e = new Engine({
+      registry: clarify ? clarifyRegistry : plainRegistry,
+      planner,
+      checkpoints,
+      ...(govern ? { governor: approveWhen((s) => s.agent === "fetch") } : {}),
+    });
+    engineCache.set(key, e);
+  }
+  return e;
+}
 
 // ── Agent roster (for the UI to show what the master can delegate to) ─────────
 async function roster(): Promise<
   { name: string; title: string; description?: string; capabilities: string[] }[]
 > {
   return Promise.all(
-    registry.names().map(async (name) => {
-      const d = await registry.describe(name);
+    plainRegistry.names().map(async (name) => {
+      const d = await plainRegistry.describe(name);
       return {
         name,
         title: d.name,
@@ -82,7 +105,7 @@ async function roster(): Promise<
 }
 
 // ── Per-run SSE plumbing ─────────────────────────────────────────────────────
-const pending = new Map<string, { goal: string; govern: boolean }>();
+const pending = new Map<string, { goal: string; govern: boolean; clarify: boolean }>();
 const conns = new Map<string, http.ServerResponse>();
 
 function sse(runId: string, ev: unknown): void {
@@ -174,7 +197,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST" && url.pathname === "/run") {
     const body = await readJson(req);
     const runId = "run_" + randomUUID().slice(0, 12);
-    pending.set(runId, { goal: String(body.goal ?? ""), govern: !!body.govern });
+    pending.set(runId, { goal: String(body.goal ?? ""), govern: !!body.govern, clarify: !!body.clarify });
     return json(res, { runId });
   }
 
@@ -189,8 +212,7 @@ const server = http.createServer(async (req, res) => {
     });
     conns.set(runId, res);
     req.on("close", () => conns.delete(runId));
-    const engine = p.govern ? engines.governed : engines.open;
-    void drive(runId, engine.run([{ kind: "text", text: p.goal }], { runId }));
+    void drive(runId, engineFor(p.govern, p.clarify).run([{ kind: "text", text: p.goal }], { runId }));
     return;
   }
 
@@ -198,9 +220,24 @@ const server = http.createServer(async (req, res) => {
     const body = await readJson(req);
     const runId = String(body.runId ?? "");
     const stepId = String(body.stepId ?? "");
-    if (!conns.has(runId)) return json(res, { error: "no open run" }, 409);
+    const p = pending.get(runId);
+    if (!p || !conns.has(runId)) return json(res, { error: "no open run" }, 409);
     json(res, { ok: true });
-    void drive(runId, engines.governed.resume(runId, { approvals: { [stepId]: !!body.approve } }));
+    void drive(runId, engineFor(p.govern, p.clarify).resume(runId, { approvals: { [stepId]: !!body.approve } }));
+    return;
+  }
+
+  // Route a human answer down to a worker that escalated (input-required). Tier-1 HITL.
+  if (req.method === "POST" && url.pathname === "/input") {
+    const body = await readJson(req);
+    const runId = String(body.runId ?? "");
+    const stepId = String(body.stepId ?? "");
+    const askIndex = Number(body.askIndex ?? 0) || 0;
+    const p = pending.get(runId);
+    if (!p || !conns.has(runId)) return json(res, { error: "no open run" }, 409);
+    json(res, { ok: true });
+    const parts = [{ kind: "text" as const, text: String(body.text ?? "") }];
+    void drive(runId, engineFor(p.govern, p.clarify).provideInput(runId, parts, { stepId, askIndex }));
     return;
   }
 
