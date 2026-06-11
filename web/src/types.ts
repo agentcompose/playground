@@ -24,6 +24,7 @@ export type Pending =
 
 export type EngineEvent =
   | { type: "run-started"; runId: string }
+  | { type: "config-resolved"; config: Record<string, unknown> }
   | { type: "plan"; steps: { id: string; agent: string }[] }
   | { type: "step-started"; stepId: string; agent: string }
   | { type: "progress"; stepId: string; percent?: number; message?: string }
@@ -39,6 +40,12 @@ export type EngineEvent =
   | { type: "error"; error: RpcError };
 
 export type StepState = "pending" | "running" | "done" | "failed";
+
+/** One received event plus the wall-clock time it arrived (for the event log). */
+export interface LogEntry {
+  ev: EngineEvent;
+  t: number;
+}
 
 export interface StepView {
   id: string;

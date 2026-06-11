@@ -12,6 +12,7 @@ import { AgentRoster } from "./components/AgentRoster.tsx";
 import { EventLog } from "./components/EventLog.tsx";
 import { StatusBadge } from "./components/StatusBadge.tsx";
 import { Elapsed } from "./components/Elapsed.tsx";
+import { EffectiveConfig } from "./components/EffectiveConfig.tsx";
 
 export function App() {
   const run = useRun();
@@ -83,6 +84,7 @@ export function App() {
         config={config}
         onConfigChange={setConfig}
         onRun={run.run}
+        cwd={cfg?.cwd}
       />
 
       {mode === "engine" && <AgentRoster agents={agents} search={cfg?.search} />}
@@ -93,6 +95,9 @@ export function App() {
             {mode === "engine" ? "Plan & steps" : "Run"}
           </h2>
           <div className="max-h-[58vh] space-y-3 overflow-auto p-3.5">
+            {mode === "agent" && run.resolvedConfig && (
+              <EffectiveConfig submitted={config} resolved={run.resolvedConfig} />
+            )}
             {run.pending && (
               <ApprovalCard stepId={run.pending.stepId} agent={run.pending.agent} onDecide={run.approve} />
             )}

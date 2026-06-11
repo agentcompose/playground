@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { type Artifact, type StepView, partsToText } from "../types.ts";
+import { PartView } from "./PartView.tsx";
 
 const BADGE: Record<StepView["state"], string> = {
   pending: "bg-panel2 text-dim",
@@ -22,18 +23,20 @@ function fmtDuration(ms: number): string {
 
 function ArtifactCard({ artifact }: { artifact: Artifact }) {
   const [open, setOpen] = useState(true);
-  const text = partsToText(artifact.parts);
+  const chars = partsToText(artifact.parts).length;
   return (
     <div className="rounded-md border border-line bg-bg/60">
       <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left">
         <span aria-hidden className="text-dim">{open ? "▾" : "▸"}</span>
         <span className="text-[11px] text-accent">📎 {artifact.name ?? artifact.id}</span>
-        <span className="ml-auto text-[10px] text-dim">{text.length} chars</span>
+        <span className="ml-auto text-[10px] text-dim">{chars} chars</span>
       </button>
       {open && (
-        <pre className="max-h-72 overflow-auto whitespace-pre-wrap border-t border-line px-2.5 py-2 font-mono text-[11.5px] text-[#cbd2e0]">
-          {text}
-        </pre>
+        <div className="space-y-1.5 border-t border-line p-2">
+          {artifact.parts.map((p, i) => (
+            <PartView key={i} part={p} name={artifact.name} />
+          ))}
+        </div>
       )}
     </div>
   );

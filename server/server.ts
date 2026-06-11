@@ -176,10 +176,13 @@ async function driveAgent(runId: string, agent: string, goal: string, config: Ag
   const client = inProcess(def); // fresh client so per-run config can't race a shared one
   const step = agent;
   try {
-    await client.configure(config ?? {});
+    const effective = await client.configure(config ?? {});
     const task = await client.submit([{ kind: "text", text: goal }]);
     agentRuns.set(runId, { client, taskId: task.id });
     sse(runId, { type: "run-started", runId });
+    // Surface the agent's *normalized* config (defaults applied, values coerced) — this is
+    // configure()'s return, which proves the contract's config validation to the UI.
+    sse(runId, { type: "config-resolved", config: effective });
     sse(runId, { type: "plan", steps: [{ id: step, agent }] });
     sse(runId, { type: "step-started", stepId: step, agent });
     for await (const ev of client.events(task.id)) {
@@ -291,6 +294,7 @@ const server = http.createServer(async (req, res) => {
       baseUrl,
       search: tavilyKey ? "tavily" : "fixture",
       modes: ["engine", "agent"],
+      cwd: process.cwd(),
       agents: await roster(),
     });
   }

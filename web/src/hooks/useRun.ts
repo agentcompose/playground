@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { sendCancel, sendControl, sendInput, startRun, type RunRequest } from "../api.ts";
 import {
   type EngineEvent,
+  type LogEntry,
   type Part,
   type RunStatus,
   type StepState,
@@ -23,9 +24,10 @@ interface RunState {
   error?: string;
   pending?: { stepId: string; agent: string };
   inputAsk?: InputAsk;
-  log: EngineEvent[];
+  log: LogEntry[];
   startedAt?: number;
   endedAt?: number;
+  resolvedConfig?: Record<string, unknown>;
   run: (req: RunRequest) => Promise<void>;
   approve: (ok: boolean) => Promise<void>;
   answer: (text: string) => Promise<void>;
@@ -40,9 +42,10 @@ export function useRun(): RunState {
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState<{ stepId: string; agent: string }>();
   const [inputAsk, setInputAsk] = useState<InputAsk>();
-  const [log, setLog] = useState<EngineEvent[]>([]);
+  const [log, setLog] = useState<LogEntry[]>([]);
   const [startedAt, setStartedAt] = useState<number>();
   const [endedAt, setEndedAt] = useState<number>();
+  const [resolvedConfig, setResolvedConfig] = useState<Record<string, unknown>>();
 
   const runIdRef = useRef<string>("");
   const esRef = useRef<EventSource | null>(null);
@@ -67,8 +70,11 @@ export function useRun(): RunState {
 
   const onEvent = useCallback(
     (ev: EngineEvent) => {
-      setLog((l) => [...l, ev]);
+      setLog((l) => [...l, { ev, t: Date.now() }]);
       switch (ev.type) {
+        case "config-resolved":
+          setResolvedConfig(ev.config);
+          break;
         case "plan":
           ev.steps.forEach((s) => upsert(s.id, { agent: s.agent, state: "pending" as StepState }));
           break;
@@ -174,6 +180,7 @@ export function useRun(): RunState {
     setLog([]);
     setStartedAt(undefined);
     setEndedAt(undefined);
+    setResolvedConfig(undefined);
     setStatus("idle");
   }, [closeStream]);
 
@@ -218,5 +225,5 @@ export function useRun(): RunState {
     await sendCancel(runIdRef.current);
   }, []);
 
-  return { status, steps, resultParts, error, pending, inputAsk, log, startedAt, endedAt, run, approve, answer, cancel, reset };
+  return { status, steps, resultParts, error, pending, inputAsk, log, startedAt, endedAt, resolvedConfig, run, approve, answer, cancel, reset };
 }

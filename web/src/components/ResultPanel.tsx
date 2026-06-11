@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Part } from "../types.ts";
 import { Markdown } from "./Markdown.tsx";
+import { PartView } from "./PartView.tsx";
 
 function CopyButton({ text }: { text: string }) {
   const [done, setDone] = useState(false);
@@ -65,6 +66,7 @@ export function ResultPanel({ parts, error }: { parts?: Part[]; error?: string }
     .join("\n\n")
     .trim();
   const json = parts.find((p) => p.kind === "json") as Extract<Part, { kind: "json" }> | undefined;
+  const files = parts.filter((p): p is Extract<Part, { kind: "file" }> => p.kind === "file");
 
   return (
     <div className="space-y-3">
@@ -78,6 +80,13 @@ export function ResultPanel({ parts, error }: { parts?: Part[]; error?: string }
         </div>
       )}
       {text ? <Markdown text={text} /> : <div className="text-sm italic text-dim">(no text in result)</div>}
+      {files.length > 0 && (
+        <div className="space-y-1.5 border-t border-line pt-2">
+          {files.map((p, i) => (
+            <PartView key={i} part={p} />
+          ))}
+        </div>
+      )}
       {json && <JsonDisclosure json={json.json} />}
     </div>
   );

@@ -30,6 +30,7 @@ export interface ServerConfig {
   baseUrl: string;
   search?: string;
   modes?: Mode[];
+  cwd?: string;
   agents?: AgentInfo[];
 }
 
